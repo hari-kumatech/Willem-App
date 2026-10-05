@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mek-Rider in het crossdock proces</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e2038; --card: #142c4a; --floor: #10263f; --text: #f4f6f8; --text-soft: #93a6bf;
+    --accent: #d6483d; --accent-soft: rgba(214,72,61,0.14); --border: rgba(147,166,191,0.22);
+    --positive: #5fb885; --wood: #c89b5e; --wood-dark: #8f6a3a; --line: rgba(147,166,191,0.35);
+    --std: #93a6bf;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0e2038; --card: #142c4a; --floor: #10263f; --text: #f4f6f8; --text-soft: #93a6bf; }
+  }
+  :root[data-theme="dark"] { --bg: #0e2038; --card: #142c4a; --floor: #10263f; --text: #f4f6f8; --text-soft: #93a6bf; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 60px; }
+  .brand-logo { height: 40px; width: auto; display: block; margin-bottom: 18px; }
+  h1 {
+    font-family: 'Oswald', -apple-system, sans-serif; font-weight: 700; text-transform: uppercase;
+    font-style: italic; transform: skewX(-6deg); transform-origin: left; display: inline-block;
+    font-size: 1.9rem; margin: 0 0 6px; letter-spacing: 0.01em; line-height: 1.1;
+  }
+  .sub { color: var(--text-soft); font-size: 0.95rem; margin: 0 0 24px; max-width: 64ch; line-height: 1.5; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 20px; }
+  .card h2 { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.05rem; margin: 0 0 14px; letter-spacing: 0.02em; }
+
+  /* Floor plans */
+  .lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .lane-name { font-family: 'Oswald', sans-serif; font-size: 1.1rem; font-weight: 600; }
+  .lane-name small { font-family: -apple-system, sans-serif; font-weight: 400; color: var(--text-soft); font-size: 0.82rem; margin-left: 6px; }
+  .lane-count { font-family: 'Oswald', sans-serif; font-size: 1.5rem; font-weight: 700; }
+  .lane-count span { font-family: -apple-system, sans-serif; font-size: 0.78rem; color: var(--text-soft); font-weight: 400; margin-left: 4px; }
+  .lane.mek .lane-count { color: var(--accent); }
+  .plan-scroll { overflow-x: auto; border-radius: 10px; }
+  svg.plan { display: block; width: 100%; min-width: 560px; height: auto; background: var(--floor); border-radius: 10px; }
+  svg.plan text { font-size: 10px; fill: var(--text-soft); }
+  .zone { fill: transparent; stroke: transparent; transition: fill .25s, stroke .25s; }
+  .zone.on { fill: rgba(214,72,61,0.10); stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .route-hl { fill: none; stroke: transparent; stroke-width: 22; stroke-linejoin: round; transition: stroke .25s; }
+  .route-hl.on { stroke: rgba(214,72,61,0.18); }
+  .lane + .lane { margin-top: 18px; }
+  .phase { font-size: 0.8rem; color: var(--text-soft); margin-top: 6px; min-height: 1.2em; }
+
+  .controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 9px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--text-soft); border: 1px solid var(--border); }
+  .btn:focus-visible, .seg button:focus-visible, .step-btn:focus-visible, input:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg button { border: none; background: transparent; color: var(--text-soft); padding: 8px 12px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+  .seg button.active { background: var(--accent-soft); color: var(--text); }
+  .clock { margin-left: auto; font-size: 0.86rem; color: var(--text-soft); }
+  .clock b { color: var(--text); font-variant-numeric: tabular-nums; }
+  .lead-bar { margin-top: 12px; font-size: 0.9rem; }
+  .lead-bar b { color: var(--positive); }
+
+  /* Process steps */
+  .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; }
+  @media (max-width: 720px) { .steps { grid-template-columns: 1fr 1fr; } }
+  .step-btn { text-align: left; background: var(--bg); border: 1px solid var(--border); color: var(--text-soft); border-radius: 10px; padding: 10px 12px; cursor: pointer; font-size: 0.82rem; line-height: 1.3; position: relative; }
+  .step-btn .n { display: block; font-family: 'Oswald', sans-serif; font-size: 1.2rem; font-weight: 700; color: var(--text); }
+  .step-btn.win::after { content: "Mek-voordeel"; position: absolute; top: 10px; right: 10px; font-size: 0.66rem; color: var(--accent); font-weight: 600; }
+  .step-btn.active { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+  .step-detail { display: grid; grid-template-columns: 1.3fr 1fr; gap: 18px; }
+  @media (max-width: 720px) { .step-detail { grid-template-columns: 1fr; } }
+  .step-detail h3 { margin: 0 0 8px; font-size: 1rem; }
+  .step-detail p { margin: 0; color: var(--text-soft); line-height: 1.55; font-size: 0.9rem; max-width: 60ch; }
+  .impact { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; font-size: 0.88rem; line-height: 1.5; }
+  .impact.neutral { background: rgba(147,166,191,0.10); color: var(--text-soft); }
+
+  /* Inputs + results */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  .field { margin-bottom: 16px; }
+  .field label { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 6px; }
+  .field .val { font-weight: 600; color: var(--accent); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { padding: 9px 8px; text-align: right; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--text-soft); font-weight: 600; font-size: 0.8rem; }
+  td.mek { color: var(--accent); font-weight: 600; }
+  tr.total td { border-bottom: none; font-weight: 700; }
+  .gain { font-family: 'Oswald', sans-serif; font-size: 2.4rem; font-weight: 700; color: var(--positive); margin: 14px 0 0; line-height: 1; }
+  .gain-sub { font-size: 0.84rem; color: var(--text-soft); margin-top: 4px; }
+  .note { font-size: 0.78rem; color: var(--text-soft); font-style: italic; margin-top: 12px; line-height: 1.5; }
+  footer { font-size: 0.75rem; color: var(--text-soft); margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTUVLIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDI0Ni4zMiA5NS42MSI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjUuMSwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDMpICAtLT4KICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLnN0MCB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLnN0MSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIyNDEuMzIgNzMuOTcgMTIzLjk4IDczLjk3IDEyMy45OCA3MC45OSAyMzkuNDcgNzAuOTkgMjQxLjMyIDczLjk3Ii8+CiAgPHJlY3QgY2xhc3M9InN0MSIgeD0iLjU3IiB5PSI3MC45OSIgd2lkdGg9IjEyMy4zNyIgaGVpZ2h0PSIyLjk3Ii8+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSI3MS4zNCA5NS4yOSA2OC4xIDk1LjMzIDY5LjIzIDg5LjU5IDYyLjkzIDg5LjU5IDYxLjc1IDk1LjMxIDU4LjQ3IDk1LjMyIDYxLjMgODEuNTIgNjQuNTkgODEuNTIgNjMuNDkgODYuODMgNjkuNzUgODYuODMgNzAuODYgODEuNTIgNzQuMTEgODEuNTEgNzEuMzQgOTUuMjkiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTA5LjI5LDgxLjU1bDMuMjctLjAyLTEuNzksOC43MWMtLjksNC4zOS01LjEsNi4xOC05LjQsNC45Ny0yLjI0LS42My0zLjYxLTIuODEtMy4xNi01LjEybDEuNjctOC41OCwzLjI2LjAyLTEuNjQsOC40M2MtLjMxLDEuNTcuODQsMi43NSwyLjM3LDIuODMsMS44Ny4wOSwzLjMyLS45OCwzLjctMi44NGwxLjcxLTguNDFaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTUwLjI4LDkyLjY5YzEuODYuMzcsMy42Ni0uMTgsNC44Ni0xLjYxbDEuOTksMS45NWMtMi4wOSwyLjU4LTYuMzEsMy4xNi05LjE1LDIuMDMtMi4wMi0uOC0zLjQzLTIuNTctMy42NC00Ljc1LS4yNC0yLjQzLjUzLTQuODUsMi4yNi02LjU5LDMuMDgtMy4xMSw5LjA4LTMuNTEsMTEuNzgtLjA4bC0yLjQxLDEuOTVjLTEuNjItMi4xMy00LjY1LTEuOTktNi41My0uNDYtMS4xOC45Ni0xLjgsMi40OS0xLjg0LDQuMTItLjAzLDEuNjkuOTEsMy4wOCwyLjY4LDMuNDNaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTE0MS41NSw4OC4wM2MuMTkuNDgtLjA0LDEuMDMtLjIsMS41OWgtNi43NXMtMS4xNSw1LjY5LTEuMTUsNS42OWgtMS44NnMyLjc1LTEzLjc5LDIuNzUtMTMuNzloOS40NXMtLjI3LDEuNTgtLjI3LDEuNThsLTcuNTkuMDItLjk2LDQuODloNi42WiIvPgogIDxwb2x5Z29uIGNsYXNzPSJzdDAiIHBvaW50cz0iMTE5LjIyIDk1LjMxIDExNS45NiA5NS4zMiAxMTguMjEgODQuMTMgMTEzLjczIDg0LjA5IDExNC4yNiA4MS41IDEyNi40MyA4MS41MSAxMjUuOTcgODQuMSAxMjEuNTIgODQuMSAxMTkuMjIgOTUuMzEiLz4KICA8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjI1Ljc2IDg5LjUxIDE5LjI0IDg5LjUzIDE4LjU5IDkyLjc0IDI2LjM0IDkyLjc0IDI1LjggOTUuMzMgMTQuOCA5NS4zMyAxNy42MSA4MS41IDI4LjE2IDgxLjUxIDI3LjY2IDg0LjA0IDIwLjM0IDg0LjA2IDE5Ljc1IDg3IDI2LjIxIDg3LjAyIDI1Ljc2IDg5LjUxIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTM4Ljg3LDgxLjUyaC0zLjVzLTguNywxMy43OS04LjcsMTMuNzloMy40MnMxLjgxLTIuOTMsMS44MS0yLjkzbDYuNTcuMDMuNjcsMi45MmgzLjI5cy0zLjU1LTEzLjgxLTMuNTUtMTMuODFaTTMzLjM4LDg5Ljg4bDMuMjYtNS40MSwxLjI0LDUuMzQtNC40OS4wOFoiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTMuNTEsODMuNTVjLS45Mi0xLjI5LTIuMzQtMi0zLjk0LTJsLTYuNzQtLjAzLTIuODIsMTMuODFoMy4yNXMuODMtNC4wMS44My00LjAxaDIuNzdzMi4yNCw0LjA1LDIuMjQsNC4wNWwzLjM0LS4wOC0yLjMtNC4zN2MzLjIyLS45Myw0LjczLTQuNDQsMy4zNy03LjM1Wk0xMC4zNCw4Ny40NWMtLjM2LjYtMS4xOSwxLjE4LTIuMDUsMS4yMWwtMy42Ni4wOS45My00LjY1LDMuMTkuMDVjLjYyLDAsMS4zNC4yNiwxLjY5Ljg3LjQ1Ljc4LjMzLDEuNy0uMSwyLjQ0WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0xNzIuMDEsODMuNDNjLS43Ni0xLjE2LTEuOTctMS44NS0zLjM5LTEuODZsLTYuMDItLjA0LTIuNzksMTMuNzdoMS44OHMuOS00LjQxLjktNC40MWg0LjAyczIuMjcsNC40MSwyLjI3LDQuNDFjLjc1LjAyLDEuMzQuMDgsMS45NC0uMDZsLTIuMzYtNC42M2MzLjI3LS43NCw0LjkxLTQuMiwzLjU0LTcuMTlaTTE3MC4wNiw4Ny41OWMtLjQ5Ljg0LTEuNTgsMS42Mi0yLjc2LDEuNjRsLTQuMzMuMDQsMS4yMS02LjE1LDMuODEuMDNjLjgxLDAsMS43OC4zNiwyLjI1LDEuMTMuNjQsMS4wNi40MiwyLjI5LS4xOCwzLjMxWiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0yMjUuNzksODMuMzdjLS42OS0xLjE4LTIuMDktMS43OS0zLjQzLTEuOGwtNS45Mi0uMDQtMi43OCwxMy43OCwxLjg5LS4wNC45LTQuMzdoMy45NXMyLjMyLDQuNDMsMi4zMiw0LjQzbDEuOTktLjAyLTIuNDYtNC42M2MxLjYtLjQzLDIuODgtMS40NSwzLjQ5LTIuNjguNzUtMS41Mi44Ny0zLjI1LjA2LTQuNjNaTTIyMy44Nyw4Ny42OGMtLjUzLjgyLTEuNTQsMS41My0yLjY4LDEuNTVsLTQuNDMuMDYsMS4yLTYuMTRoMy41OGMuOTgtLjAyLDIuMDguMzEsMi42LDEuMjkuNTYsMS4wNi4zMiwyLjMxLS4yOCwzLjI0WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik05Ni4xMyw4Ni4wMmMtLjMyLTEuODYtMS40Ni0zLjM0LTMuMi00LjA3LTMuMjItMS4zNS03LjA3LS43Ny05LjYsMS42OC0xLjc4LDEuNzItMi41NCw0LjE5LTIuMzIsNi42Mi4yMSwyLjM5LDEuODQsNC4yNyw0LjE0LDQuOTQsMS45Ni41Nyw0LjA4LjU0LDYuMDktLjI5LDMuNTYtMS40Niw1LjUzLTUuMTksNC44OS04Ljg5Wk05Mi45MSw4OC4xOWMtLjIxLDEuNjktMS4wOSwzLjA5LTIuMzIsMy44NS0xLjQ1Ljg5LTMuMjEsMS4wMy00LjcuMjctMS4yOC0uNjYtMS43Mi0yLjA2LTEuNjQtMy40NC4xMS0xLjY5LjkzLTMuMiwyLjIxLTQuMDUsMS40OS0uOTgsMy4zOC0xLjE1LDQuOTEtLjMsMS4yOS43MSwxLjcyLDIuMTcsMS41MywzLjY4WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0yMTIuMTYsODYuNjNjLS4xOC0yLjM4LTEuNTUtNC4zNC0zLjg5LTQuOTctMi4xOC0uNTktNC41NS0uNC02LjU0LjgtMy4wNSwxLjg0LTQuNTEsNS41MS0zLjcsOC45NS4zMywxLjQxLDEuMjIsMi41OSwyLjU3LDMuMjgsMi42OCwxLjM3LDUuODksMS4wMyw4LjI3LS42OCwyLjI5LTEuNjQsMy41MS00LjQzLDMuMjktNy4zOFpNMjA4LjU1LDkxLjk2Yy0xLjY4LDEuNzktNC4yNCwyLjI4LTYuNDMsMS40Ny0yLjg3LTEuMDctMi45My00Ljg5LTEuNTMtNy4zOCwxLjQxLTIuNTEsNC4zMS0zLjY3LDcuMDUtMi43OCwxLjM3LjQ1LDIuMzYsMS41OCwyLjU4LDMuMDIuMzEsMi4wMi0uMjEsNC4xLTEuNjgsNS42N1oiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTkxLjc5LDk1LjMybDItMTAuMjctNi4zMSw4LjI2Yy0uMTMuNDUtMS4wMy42MS0xLjIuMThsLTMuMjktOC41OC0yLjExLDEwLjM5aC0xLjgxczIuNzctMTMuNzYsMi43Ny0xMy43NmwxLjY0LS4wMywzLjcsOS43OCw3LjI5LTkuNzRjLjYxLS4wOSwxLjE0LS4wOSwxLjg0LDBsLTIuNzMsMTMuNzItMS43OS4wMloiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjM3LjU2LDg5LjA1bC02LjguMDMtLjkxLDQuNThoNy45M3MtLjMzLDEuNjctLjMzLDEuNjdoLTkuODJzMi44MS0xMy44LDIuODEtMTMuOGg5LjM5YzAsLjU3LS4xMywxLjAzLS4yOSwxLjU4aC03LjVzLS44Nyw0LjMtLjg3LDQuM2w2LjY4LjA0LS4yOCwxLjZaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTE1OC4xNiw4NS42MWMtLjM0LTEuNjgtMS40Ni0zLjA2LTMuMDYtMy43LTMuNDUtMS4zOC03LjQ3LS4yOC05LjYxLDIuNzgtMi4yNCwzLjE4LTIuMjIsOC40NiwxLjQ4LDEwLjE0LDIuNTcsMS4xNyw1LjY4LjksOC4wNS0uODUsMi42Ni0xLjk3LDMuNzYtNS4yMywzLjEzLTguMzdaTTE1Ni4zNiw4OC41NWMtLjU5LDMuNjEtMy43Nyw1Ljc5LTcuMjQsNS4xMy0yLjE0LS40LTMuMzMtMi4xMS0zLjI2LTQuMjcuMS0zLjExLDIuMDYtNS44OCw1LjE5LTYuMzcsMS43LS4yNywzLjQ3LjE1LDQuNTQsMS41Ljg4LDEuMTIsMSwyLjU2Ljc3LDRaIi8+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIxLjMxIDYzLjUzIDE1LjIzIC4wMiAzNS40OCAuMDIgNDkuMzYgMzEuNzEgNzYuNyAuMDYgOTcuNjUgLjA2IDg0LjE5IDYzLjU0IDY0Ljk4IDYzLjU0IDcyLjM1IDI4LjI2IDQ4LjQ3IDU2LjI4IDQwLjEyIDU2LjI4IDI4LjM2IDI3LjkxIDIwLjM3IDYzLjUzIDEuMzEgNjMuNTMiLz4KICA8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjEwNy42MyAwIDE2Ny40NiAwIDE2NC41OCAxNC45OCAxMjQuNTMgMTQuOTggMTIyLjY3IDI0LjM3IDE1Ni4wMyAyNC4zNyAxNTMuMyAzOC44OSAxMTkuODEgMzguODkgMTE3Ljk3IDQ4Ljc5IDE1OC4yNyA0OC43OSAxNTUuNjYgNjMuNTQgOTQuODcgNjMuNTQgMTA3LjYzIDAiLz4KICA8Zz4KICAgIDxwb2x5Z29uIGNsYXNzPSJzdDEiIHBvaW50cz0iMTk0Ljk1IDguNjEgMTk2LjU3IC4wNCAxNzcuMDggLjA0IDE3MS44NiAyNy44MSAxOTQuOTUgOC42MSIvPgogICAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIyNDYuMzIgLjAyIDIyMy45OCAuMDIgMTkwLjU1IDMxLjkzIDE5NC40IDExLjUyIDE3MS4zMiAzMC43MSAxNjUuMTUgNjMuNTQgMTg0Ljk3IDYzLjU0IDE4Ni4wNyA1Ny41OCAyMDIuNyA0MS45NiAyMTUuOTkgNjMuNTIgMjM4LjE5IDYzLjUyIDIxNi43MiAyOC43IDI0Ni4zMiAuMDIiLz4KICA8L2c+Cjwvc3ZnPg==" alt="MEK logo" class="brand-logo">
+  <h1>Mek-Rider in het crossdock</h1>
+  <p class="sub">Van inkomende trailer naar uitgaande trailer, zonder opslag ertussen. Zie hoe de Mek-Rider met uitschuifbare lepels twee pallets achter elkaar meeneemt en ze in één rit op twee losplekken afzet, en wat dat per dag scheelt ten opzichte van een standaard EPT.</p>
+
+  <!-- LIVE SIMULATION -->
+  <div class="card">
+    <div class="lane std">
+      <div class="lane-head">
+        <div class="lane-name">Standaard EPT <small>1 pallet per rit, rijdt afwisselend naar losplek A en B</small></div>
+        <div class="lane-count" id="cnt-std">0<span>pallets verplaatst</span></div>
+      </div>
+      <div class="plan-scroll"><svg class="plan" id="plan-std" viewBox="0 0 800 250" role="img" aria-label="Plattegrond crossdock met standaard EPT"></svg></div>
+      <div class="phase" id="ph-std"></div>
+    </div>
+    <div class="lane mek">
+      <div class="lane-head">
+        <div class="lane-name">Mek-Rider <small>2 pallets per rit, lost op losplek A én B</small></div>
+        <div class="lane-count" id="cnt-mek">0<span>pallets verplaatst</span></div>
+      </div>
+      <div class="plan-scroll"><svg class="plan" id="plan-mek" viewBox="0 0 800 250" role="img" aria-label="Plattegrond crossdock met Mek-Rider"></svg></div>
+      <div class="phase" id="ph-mek"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn" id="play">Pauzeer</button>
+      <button class="btn ghost" id="reset">Opnieuw</button>
+      <div class="seg" id="tempo" aria-label="Simulatietempo">
+        <button data-x="10">10×</button><button data-x="20" class="active">20×</button><button data-x="40">40×</button>
+      </div>
+      <div class="clock">Verstreken tijd in de hal: <b id="clock">0:00</b></div>
+    </div>
+    <div class="lead-bar" id="lead">De Mek-Rider start gelijk met de standaard EPT.</div>
+  </div>
+
+  <!-- PROCESS STEPS -->
+  <div class="card">
+    <h2>Het crossdock proces, stap voor stap</h2>
+    <div class="steps" id="steps"></div>
+    <div class="step-detail">
+      <div><h3 id="sd-title"></h3><p id="sd-text"></p></div>
+      <div class="impact" id="sd-impact"></div>
+    </div>
+  </div>
+
+  <!-- INPUTS + DAY RESULT -->
+  <div class="card">
+    <h2>Uw hal, uw volume</h2>
+    <div class="grid2">
+      <div>
+        <div class="field"><label>Afstand inbound → outbound dock <span class="val" id="v-len">40 m</span></label>
+          <input type="range" id="len" min="5" max="200" step="5" value="40"></div>
+        <div class="field"><label>Zijwaartse verplaatsing tussen docks <span class="val" id="v-wid">20 m</span></label>
+          <input type="range" id="wid" min="5" max="200" step="5" value="20"></div>
+        <div class="field"><label>Afstand tussen losplek A en B <span class="val" id="v-gap">10 m</span></label>
+          <input type="range" id="gap" min="0" max="50" step="1" value="10"></div>
+        <div class="field"><label>Rijsnelheid <span class="val" id="v-spd">12 km/u</span></label>
+          <input type="range" id="spd" min="3" max="20" step="0.5" value="12"></div>
+        <div class="field"><label>Laad-/lostijd per pallet <span class="val" id="v-load">30 sec</span></label>
+          <input type="range" id="load" min="0" max="120" step="5" value="30"></div>
+        <div class="field" style="margin-bottom:0"><label>Pallets door het crossdock per dag <span class="val" id="v-vol">600</span></label>
+          <input type="range" id="vol" min="50" max="3000" step="50" value="600"></div>
+      </div>
+      <div>
+        <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th></th><th>Standaard EPT</th><th>Mek-Rider</th></tr></thead>
+          <tbody>
+            <tr><td>Losplekken per rit</td><td>1</td><td class="mek">2</td></tr>
+            <tr><td>Cyclustijd per rit</td><td id="t-cyc-s"></td><td class="mek" id="t-cyc-m"></td></tr>
+            <tr><td>Tijd per pallet</td><td id="t-pp-s"></td><td class="mek" id="t-pp-m"></td></tr>
+            <tr><td>Ritten per dag</td><td id="t-rit-s"></td><td class="mek" id="t-rit-m"></td></tr>
+            <tr><td>Rijafstand per dag</td><td id="t-km-s"></td><td class="mek" id="t-km-m"></td></tr>
+            <tr class="total"><td>Uren per dag</td><td id="t-hr-s"></td><td class="mek" id="t-hr-m"></td></tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="gain" id="gain"></div>
+        <div class="gain-sub" id="gain-sub"></div>
+      </div>
+    </div>
+    <p class="note">Rekent met de formule van de terugverdientijd calculator (rechthoekig traject, inclusief retour), uitgebreid met de rit tussen losplek A en B. De standaard EPT rijdt afwisselend naar A en B; de Mek-Rider rijdt inbound → A → B → inbound. Zet de afstand tussen A en B op 0 m en de uitkomst is gelijk aan de calculator.</p>
+  </div>
+
+  <footer>Indicatieve visualisatie. De plattegrond is schematisch; tijden en aantallen volgen uw invoer.</footer>
+</div>
+
+<script>
+(function () {
+  const NS = 'http://www.w3.org/2000/svg';
+  const $ = id => document.getElementById(id);
+  const SLOTS = 12; // pallets per trailer in de visualisatie
+
+  // ---------- Parameters ----------
+  const P = { len: 40, wid: 20, gap: 10, spd: 12, load: 30, vol: 600 };
+  function model() {
+    const v = P.spd * 1000 / 3600;
+    const D1 = P.len + P.wid;                                  // enkele reis naar losplek A
+    const stdTrip = 2 * D1 + P.gap;                            // gem. retour standaard EPT (afwisselend A en B)
+    const mekTrip = 2 * D1 + 2 * P.gap;                        // inbound → A → B → inbound
+    const cycS = stdTrip / v + P.load;                         // per rit = per pallet
+    const cycM = mekTrip / v + 2 * P.load;                     // per rit, 2 pallets
+    return { v, D1, stdTrip, mekTrip, cycS, cycM, ppS: cycS, ppM: cycM / 2,
+      eff: cycS > 0 ? Math.max(0, 1 - (cycM / 2) / cycS) : 0 };
+  }
+
+  // ---------- Geometrie plattegrond ----------
+  const IN = [150, 62], A = [650, 92], B = [650, 192];
+  const PATHS = {
+    toA:   { pts: [IN, [400, 62], [400, 92], A],  dirs: ['rev', 'fwd', 'fwd'] },
+    toB:   { pts: [IN, [400, 62], [400, 192], B], dirs: ['rev', 'fwd', 'fwd'] },
+    AtoB:  { pts: [A, [615, 92], [615, 192], B],  dirs: ['rev', 'fwd', 'fwd'] },
+    backA: { pts: [A, [400, 92], [400, 62], IN],  dirs: ['rev', 'fwd', 'fwd'] },
+    backB: { pts: [B, [400, 192], [400, 62], IN], dirs: ['rev', 'fwd', 'fwd'] },
+  };
+  Object.values(PATHS).forEach(p => {
+    p.seg = []; p.len = 0;
+    for (let i = 1; i < p.pts.length; i++) { const d = Math.hypot(p.pts[i][0] - p.pts[i-1][0], p.pts[i][1] - p.pts[i-1][1]); p.seg.push(d); p.len += d; }
+  });
+  function pointAt(p, f) {
+    let d = f * p.len;
+    for (let i = 0; i < p.seg.length; i++) {
+      if (d <= p.seg[i] || i === p.seg.length - 1) {
+        const r = p.seg[i] ? Math.min(1, d / p.seg[i]) : 0, a = p.pts[i], b = p.pts[i+1];
+        let ang = Math.atan2(b[1] - a[1], b[0] - a[0]) * 180 / Math.PI;
+        if (p.dirs[i] === 'rev') ang += 180;
+        return { x: a[0] + (b[0] - a[0]) * r, y: a[1] + (b[1] - a[1]) * r, ang };
+      }
+      d -= p.seg[i];
+    }
+  }
+  const dAttr = p => 'M' + p.pts.map(q => q.join(',')).join(' L');
+
+  function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+  function txt(parent, x, y, s, anchor) { const t = el('text', { x, y, 'text-anchor': anchor || 'start' }, parent); t.textContent = s; return t; }
+  function pallet(parent, x, y, s) {
+    const g = el('g', { transform: `translate(${x},${y})` }, parent);
+    el('rect', { x: 0, y: 0, width: s, height: s, rx: 1.5, fill: 'var(--wood)' }, g);
+    el('line', { x1: 0, y1: s/2, x2: s, y2: s/2, stroke: 'var(--wood-dark)', 'stroke-width': 1 }, g);
+    el('line', { x1: s/2, y1: 0, x2: s/2, y2: s, stroke: 'var(--wood-dark)', 'stroke-width': 1 }, g);
+    return g;
+  }
+
+  function buildPlan(svg, perRide) {
+    const zones = {
+      inbound: [el('rect', { class: 'zone', x: 4, y: 8, width: 132, height: 110, rx: 8 }, svg)],
+      outA:    [el('rect', { class: 'zone', x: 664, y: 40, width: 132, height: 102, rx: 8 }, svg)],
+      outB:    [el('rect', { class: 'zone', x: 664, y: 144, width: 132, height: 102, rx: 8 }, svg)],
+      staging: [el('rect', { class: 'zone', x: 170, y: 92, width: 200, height: 140, rx: 8 }, svg),
+                el('rect', { class: 'zone', x: 425, y: 104, width: 180, height: 76, rx: 8 }, svg)],
+      route:   (perRide === 2 ? ['toA', 'AtoB', 'backB'] : ['toA', 'toB']).map(k => el('path', { class: 'route-hl', d: dAttr(PATHS[k]) }, svg)),
+    };
+
+    // dockwanden + deuren
+    el('line', { x1: 140, y1: 0, x2: 140, y2: 250, stroke: 'var(--line)', 'stroke-width': 2 }, svg);
+    el('line', { x1: 660, y1: 0, x2: 660, y2: 250, stroke: 'var(--line)', 'stroke-width': 2 }, svg);
+    el('rect', { x: 137, y: 40, width: 6, height: 44, fill: 'var(--accent)' }, svg);
+    el('rect', { x: 657, y: 70, width: 6, height: 44, fill: 'var(--positive)' }, svg);
+    el('rect', { x: 657, y: 170, width: 6, height: 44, fill: 'var(--positive)' }, svg);
+
+    // trailers
+    el('rect', { x: 14, y: 30, width: 120, height: 64, rx: 4, fill: 'none', stroke: 'var(--text-soft)', 'stroke-width': 1.5 }, svg);
+    el('rect', { x: 666, y: 60, width: 120, height: 64, rx: 4, fill: 'none', stroke: 'var(--text-soft)', 'stroke-width': 1.5 }, svg);
+    el('rect', { x: 666, y: 160, width: 120, height: 64, rx: 4, fill: 'none', stroke: 'var(--text-soft)', 'stroke-width': 1.5 }, svg);
+    txt(svg, 14, 22, 'Inkomende trailer');
+    txt(svg, 666, 53, 'Losplek A');
+    txt(svg, 666, 153, 'Losplek B');
+    const tIn = txt(svg, 14, 110, '');
+    const tA = txt(svg, 666, 137, '');
+    const tB = txt(svg, 666, 237, '');
+
+    const inP = [], outA = [], outB = [];
+    for (let i = 0; i < SLOTS; i++) {
+      const c = Math.floor(i / 2), r = i % 2;
+      inP.push(pallet(svg, 116 - c * 19, 36 + r * 29, 16));
+      outA.push(pallet(svg, 670 + (5 - c) * 19, 66 + r * 29, 16));
+      outB.push(pallet(svg, 670 + (5 - c) * 19, 166 + r * 29, 16));
+    }
+
+    // buffer/sorteerbanen
+    for (let i = 0; i < 4; i++) el('rect', { x: 178 + i * 48, y: 102, width: 40, height: 120, fill: 'none', stroke: 'var(--line)', 'stroke-dasharray': '3 3' }, svg);
+    for (let i = 0; i < 4; i++) el('rect', { x: 433 + i * 44, y: 112, width: 36, height: 60, fill: 'none', stroke: 'var(--line)', 'stroke-dasharray': '3 3' }, svg);
+    [[190, 110], [190, 130], [238, 110], [334, 110], [334, 130], [443, 120], [487, 120], [575, 120]].forEach(([x, y]) => pallet(svg, x, y, 16).setAttribute('opacity', 0.45));
+    txt(svg, 172, 246, 'Buffer / sorteerbanen');
+
+    // routes (stippellijn)
+    (perRide === 2 ? ['toA', 'AtoB', 'backB'] : ['toA', 'toB']).forEach(k =>
+      el('path', { d: dAttr(PATHS[k]), fill: 'none', stroke: 'var(--line)', 'stroke-width': 1.5, 'stroke-dasharray': '6 5' }, svg));
+
+    // truck (bovenaanzicht, lepels wijzen +x)
+    const forkLen = perRide === 2 ? 40 : 20;
+    const truck = el('g', {}, svg);
+    el('rect', { x: -22, y: -10, width: 20, height: 20, rx: 4, fill: perRide === 2 ? 'var(--accent)' : 'var(--std)' }, truck);
+    el('circle', { cx: -14, cy: 0, r: 4, fill: 'var(--bg)' }, truck);
+    el('rect', { x: -3, y: -11, width: 4, height: 22, rx: 1, fill: 'var(--text)' }, truck);
+    el('rect', { x: 1, y: -8, width: forkLen, height: 3, fill: 'var(--text-soft)' }, truck);
+    el('rect', { x: 1, y: 5, width: forkLen, height: 3, fill: 'var(--text-soft)' }, truck);
+    const load = [];
+    for (let i = 0; i < perRide; i++) load.push(pallet(truck, 3 + i * 19, -8, 16));
+
+    return { zones, truck, load, inP, outA, outB, tIn, tA, tB, perRide, ang: 180 };
+  }
+
+  const lanes = { std: buildPlan($('plan-std'), 1), mek: buildPlan($('plan-mek'), 2) };
+
+  // ---------- Programma per periode (elke periode = 2 pallets: 1 naar A, 1 naar B) ----------
+  function program(perRide) {
+    const m = model(), v = m.v, half = P.load / 2;
+    const pick = (k, ride) => ({ kind: 'pick', dur: half * k, at: IN, face: 180, k, ride, label: 'Lossen uit inkomende trailer' });
+    const drop = (dest, ride) => ({ kind: 'drop', dur: half, at: dest === 'A' ? A : B, face: 0, dest, ride, label: 'Pallet afzetten bij losplek ' + dest });
+    const drive = (key, meters, ride, label) => ({ kind: 'drive', dur: meters / v, path: PATHS[key], ride, label });
+    if (perRide === 1) return [
+      pick(1, 1), drive('toA', m.D1, 1, 'Rijden naar losplek A'), drop('A', 1), drive('backA', m.D1, 1, 'Leeg terug naar inbound dock'),
+      pick(1, 2), drive('toB', m.D1 + P.gap, 2, 'Rijden naar losplek B'), drop('B', 2), drive('backB', m.D1 + P.gap, 2, 'Leeg terug naar inbound dock'),
+    ];
+    return [
+      pick(2, 1), drive('toA', m.D1, 1, 'Met 2 pallets naar losplek A'), drop('A', 1),
+      drive('AtoB', P.gap, 1, 'Met 1 pallet door naar losplek B'), drop('B', 1),
+      drive('backB', m.D1 + P.gap, 1, 'Leeg terug naar inbound dock'),
+    ];
+  }
+
+  let simT = 0, tempo = 20, playing = !window.matchMedia('(prefers-reduced-motion: reduce)').matches, last = null;
+
+  function laneState(L) {
+    const prog = program(L.perRide);
+    const period = prog.reduce((s, p) => s + p.dur, 0);
+    const n = period > 0 ? Math.floor(simT / period) : 0;
+    let t = period > 0 ? simT - n * period : 0;
+    const ridesPerPeriod = L.perRide === 1 ? 2 : 1;
+    const st = { picked: 2 * n, A: n, B: n, carried: 0, pos: null, ang: 180, label: '', ride: n * ridesPerPeriod + 1 };
+    for (const ph of prog) {
+      if (ph.kind === 'pick') { st.picked += ph.k; st.carried += ph.k; }
+      if (t < ph.dur || ph === prog[prog.length - 1]) {
+        st.label = ph.label; st.ride = n * ridesPerPeriod + ph.ride;
+        if (ph.kind === 'drive') { const p = pointAt(ph.path, ph.dur ? Math.min(1, t / ph.dur) : 1); st.pos = [p.x, p.y]; st.ang = p.ang; }
+        else { st.pos = ph.at; st.ang = ph.face; }
+        break;
+      }
+      t -= ph.dur;
+      if (ph.kind === 'drop') { st.carried -= 1; st[ph.dest] += 1; }
+    }
+    st.delivered = st.A + st.B;
+    return st;
+  }
+
+  const fillOut = (arr, count) => { const f = count % SLOTS; arr.forEach((g, i) => g.setAttribute('visibility', i < f ? 'visible' : 'hidden')); };
+
+  function render(dt) {
+    ['std', 'mek'].forEach(k => {
+      const L = lanes[k], s = laneState(L);
+      const diff = ((s.ang - L.ang + 540) % 360) - 180;
+      L.ang += diff * Math.min(1, dt * 8);
+      L.truck.setAttribute('transform', `translate(${s.pos[0]},${s.pos[1]}) rotate(${L.ang})`);
+      L.load.forEach((g, i) => g.setAttribute('visibility', i < s.carried ? 'visible' : 'hidden'));
+      const inMod = s.picked % SLOTS, inLeft = SLOTS - (inMod === 0 && s.picked > 0 ? SLOTS : inMod);
+      L.inP.forEach((g, i) => g.setAttribute('visibility', i >= SLOTS - inLeft ? 'visible' : 'hidden'));
+      fillOut(L.outA, s.A); fillOut(L.outB, s.B);
+      L.tIn.textContent = 'Trailers gelost: ' + Math.floor(s.picked / SLOTS);
+      L.tA.textContent = 'Trailers vertrokken: ' + Math.floor(s.A / SLOTS);
+      L.tB.textContent = 'Trailers vertrokken: ' + Math.floor(s.B / SLOTS);
+      const c = $('cnt-' + k);
+      c.firstChild.nodeValue = s.delivered;
+      c.lastChild.textContent = s.delivered === 1 ? 'pallet verplaatst' : 'pallets verplaatst';
+      $('ph-' + k).textContent = simT > 0 ? s.label + ', rit ' + s.ride : 'Klaar om te starten';
+      L.last = s;
+    });
+    const mm = Math.floor(simT / 60), ss = Math.floor(simT % 60);
+    $('clock').textContent = mm + ':' + String(ss).padStart(2, '0');
+    const d = lanes.mek.last.delivered - lanes.std.last.delivered;
+    $('lead').innerHTML = simT < 1 ? 'De Mek-Rider start gelijk met de standaard EPT.'
+      : d > 0 ? 'Na ' + mm + ' min ' + ss + ' sec heeft de Mek-Rider <b>' + d + ' pallet' + (d === 1 ? '' : 's') + ' meer</b> over losplek A en B verdeeld.'
+      : 'Beide trucks zijn bezig met hun eerste ritten.';
+  }
+
+  function frame(ts) {
+    const dt = last == null ? 0 : Math.min(0.1, (ts - last) / 1000);
+    last = ts;
+    if (playing) simT += dt * tempo;
+    render(dt || 0.016);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  $('play').textContent = playing ? 'Pauzeer' : 'Start';
+  $('play').onclick = () => { playing = !playing; $('play').textContent = playing ? 'Pauzeer' : 'Start'; };
+  $('reset').onclick = () => { simT = 0; lanes.std.ang = lanes.mek.ang = 180; };
+  document.querySelectorAll('#tempo button').forEach(b => b.onclick = () => {
+    tempo = +b.dataset.x;
+    document.querySelectorAll('#tempo button').forEach(x => x.classList.toggle('active', x === b));
+  });
+
+  // ---------- Processtappen ----------
+  const STEPS = [
+    { t: 'Aankomst trailer', zone: ['inbound'], win: false,
+      text: 'De inkomende trailer meldt zich aan en wordt aan een inbound dock gezet. Vrachtbrief en planning bepalen naar welke uitgaande docks de pallets gaan.',
+      impact: () => 'Geen verschil tussen de trucks: dit is planning en dockbezetting. Wel blijft de trailer korter aan het dock staan, zie stap 2.' },
+    { t: 'Lossen uit de trailer', zone: ['inbound'], win: true,
+      text: 'De truck rijdt de trailer in en haalt de pallets eruit. Met uitgeschoven lepels pakt de Mek-Rider twee pallets achter elkaar in één inrijbeurt, ook als ze naar verschillende bestemmingen gaan.',
+      impact: () => `Een volle trailer van 33 pallets: <b>${Math.ceil(33/2)} inrijbeurten</b> met de Mek-Rider tegen 33 met een standaard EPT. De inbound dock is eerder vrij voor de volgende trailer.` },
+    { t: 'Scannen en sorteren', zone: ['staging'], win: false,
+      text: 'Pallets worden gescand en per bestemming toegewezen. De Mek-Rider combineert in één rit twee pallets voor twee uitgaande docks: de voorste pallet voor losplek A, de achterste voor B.',
+      impact: () => 'Minder ritten betekent minder drukte in de sorteerbanen en minder kruisend verkeer tussen trucks en orderpickers.' },
+    { t: 'Transport naar outbound', zone: ['route'], win: true,
+      text: 'Het langste deel van de cyclus. De standaard EPT rijdt voor elke pallet heen en terug. De Mek-Rider rijdt één lus: inbound, losplek A, losplek B, en leeg terug.',
+      impact: m => `Per dag <b>${fmtInt(Math.ceil(P.vol/2))} ritten</b> in plaats van ${fmtInt(P.vol)}. Dat is <b>${fmtInt(P.vol * m.stdTrip / 1000 - P.vol / 2 * m.mekTrip / 1000)} km</b> minder rijden per dag bij ${fmtInt(P.vol)} pallets.` },
+    { t: 'Lossen op 2 losplekken', zone: ['outA', 'outB'], win: true,
+      text: 'De Mek-Rider zet de voorste pallet af bij losplek A, rijdt door naar losplek B en zet daar de tweede pallet af. Daarna rijdt hij leeg terug naar de inbound dock.',
+      impact: m => `Tussen A en B rijdt de Mek-Rider <b>${P.gap} m</b> extra, in plaats van een complete retour van ${fmtInt(m.stdTrip)} m die de standaard EPT voor de tweede pallet maakt. Per pallet kost de cyclus <b>${fmtTime(m.ppM)}</b> in plaats van ${fmtTime(m.ppS)}.` },
+  ];
+  let activeStep = 4;
+  const stepsEl = $('steps');
+  STEPS.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'step-btn' + (s.win ? ' win' : '');
+    b.innerHTML = '<span class="n">' + (i + 1) + '</span>' + s.t;
+    b.onclick = () => { activeStep = i; showStep(); };
+    stepsEl.appendChild(b);
+  });
+  function showStep() {
+    const s = STEPS[activeStep], m = model();
+    [...stepsEl.children].forEach((b, i) => b.classList.toggle('active', i === activeStep));
+    $('sd-title').textContent = (activeStep + 1) + '. ' + s.t;
+    $('sd-text').textContent = s.text;
+    const imp = $('sd-impact');
+    imp.innerHTML = s.impact(m);
+    imp.classList.toggle('neutral', !s.win);
+    Object.values(lanes).forEach(L => Object.entries(L.zones).forEach(([k, arr]) => arr.forEach(z => z.classList.toggle('on', s.zone.includes(k)))));
+  }
+
+  // ---------- Invoer + dagtabel ----------
+  function fmtInt(n) { return Math.round(n).toLocaleString('nl-NL'); }
+  function fmtTime(sec) { if (sec < 60) return Math.round(sec) + ' sec'; return Math.floor(sec/60) + ' min ' + Math.round(sec % 60) + ' sec'; }
+  function fmtHr(sec) { return (sec / 3600).toFixed(1).replace('.', ',') + ' uur'; }
+
+  function update() {
+    P.len = +$('len').value; P.wid = +$('wid').value; P.gap = +$('gap').value; P.spd = +$('spd').value; P.load = +$('load').value; P.vol = +$('vol').value;
+    $('v-len').textContent = P.len + ' m'; $('v-wid').textContent = P.wid + ' m'; $('v-gap').textContent = P.gap + ' m';
+    $('v-spd').textContent = String(P.spd).replace('.', ',') + ' km/u'; $('v-load').textContent = P.load + ' sec'; $('v-vol').textContent = fmtInt(P.vol);
+    const m = model();
+    const ritS = P.vol, ritM = Math.ceil(P.vol / 2);
+    $('t-cyc-s').textContent = fmtTime(m.cycS); $('t-cyc-m').textContent = fmtTime(m.cycM);
+    $('t-pp-s').textContent = fmtTime(m.ppS); $('t-pp-m').textContent = fmtTime(m.ppM);
+    $('t-rit-s').textContent = fmtInt(ritS); $('t-rit-m').textContent = fmtInt(ritM);
+    $('t-km-s').textContent = fmtInt(ritS * m.stdTrip / 1000) + ' km'; $('t-km-m').textContent = fmtInt(ritM * m.mekTrip / 1000) + ' km';
+    const hS = P.vol * m.ppS, hM = P.vol * m.ppM;
+    $('t-hr-s').textContent = fmtHr(hS); $('t-hr-m').textContent = fmtHr(hM);
+    $('gain').textContent = (m.eff * 100).toFixed(1).replace('.', ',') + '% efficiënter';
+    $('gain-sub').textContent = fmtHr(hS - hM) + ' minder truckinzet per dag, dat is ' + ((hS - hM) / 3600 / 8).toFixed(2).replace('.', ',') + ' FTE bij een dienst van 8 uur.';
+    showStep();
+  }
+  ['len', 'wid', 'gap', 'spd', 'load', 'vol'].forEach(id => $(id).addEventListener('input', update));
+  update();
+})();
+</script>
+</body>
+</html>

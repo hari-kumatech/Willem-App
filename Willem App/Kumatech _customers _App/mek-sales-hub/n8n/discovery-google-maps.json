@@ -1,0 +1,276 @@
+{
+  "id": "mekDiscovery0001",
+  "name": "MEK · Discovery (Google Maps)",
+  "active": true,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000022",
+      "name": "Webhook: discovery",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mek-discovery",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "00000000-0000-4000-8000-000000000021",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mekInboundAuth01",
+          "name": "MEK app → n8n (x-mek-secret)"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000023",
+      "name": "Respond: accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ executionId: $execution.id }) }}",
+        "options": {
+          "responseCode": 202
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000024",
+      "name": "Build area searches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// App plan [{ term, area: { postcode, label, lat, lng, radiusKm } }] → one Google Maps run per area\n        const body = $('Webhook: discovery').first().json.body;\n        const groups = new Map();\n        for (const entry of body.plan || []) {\n          const a = entry.area;\n          const key = `${a.lat},${a.lng},${a.radiusKm}`;\n          if (!groups.has(key)) groups.set(key, { area: a, terms: [] });\n          groups.get(key).terms.push(entry.term);\n        }\n        const perSearch = Math.max(5, Math.min(200, Number(body.perSearch) || 40));\n        return [...groups.values()].map((g, i) => ({\n          json: {\n            actorId: 'compass~crawler-google-places',\n            label: `maps-${i + 1}`,\n            runId: body.runId,\n            callbackUrl: body.callbackUrl,\n            budgetUrl: body.budgetUrl,\n            maxItems: perSearch * g.terms.length,\n            maxPolls: 60,\n            area: g.area,\n            input: {\n              searchStringsArray: [...new Set(g.terms)],\n              customGeolocation: { type: 'Point', coordinates: [g.area.lng, g.area.lat], radiusKm: g.area.radiusKm },\n              maxCrawledPlacesPerSearch: perSearch,\n              language: 'nl',\n              countryCode: 'nl',\n              skipClosedPlaces: body.skipClosed !== false,\n              searchMatching: 'all',\n              website: 'allPlaces',\n              // Deep search: open every place's detail page (exact closed status, all categories, extra info)\n              scrapePlaceDetailPage: body.deep === true,\n              scrapeContacts: false,\n              scrapeDirectories: false,\n              includeWebResults: false,\n              maxReviews: 0,\n              maxImages: 0,\n              maxQuestions: 0,\n            },\n          },\n        }));"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000025",
+      "name": "Run Apify actor",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "mekApifyRun00001",
+          "mode": "id"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000026",
+      "name": "Map places to batches",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Apify Google Maps output → the app's place format (spec B.10), max 100 places per callback\n        const requests = $('Build area searches').all().map((i) => i.json);\n        const out = [];\n        $input.all().forEach((item, index) => {\n          const r = item.json || {};\n          const q = requests[index] || requests[0];\n          const cost = { apifyUsd: Number(r.costUsd || 0) };\n          const base = { runId: q.runId, callbackUrl: q.callbackUrl };\n          if (r.status === 'BUDGET' || (r.status === 'ERROR' && !(r.items || []).length)) {\n            out.push({ json: { ...base, batchId: q.label, kind: 'error', items: [], cost, error: r.error || 'Apify step failed' } });\n            return;\n          }\n          const places = (r.items || [])\n            .map((p) => ({\n              placeId: p.placeId || null,\n              name: p.title || p.name || '',\n              address: p.address || [p.street, p.postalCode, p.city].filter(Boolean).join(', '),\n              postcode: p.postalCode || null,\n              city: p.city || null,\n              phone: p.phone || p.phoneUnformatted || null,\n              website: p.website || null,\n              mapsUrl: p.url || null,\n              categories: Array.isArray(p.categories) && p.categories.length ? p.categories : p.categoryName ? [p.categoryName] : [],\n              reviews: Number(p.reviewsCount || 0),\n              rating: p.totalScore == null ? null : Number(p.totalScore),\n              location: p.location && p.location.lat ? { lat: p.location.lat, lng: p.location.lng } : null,\n              closed: Boolean(p.permanentlyClosed),\n              description: p.description || p.subTitle || null,\n              searchTerm: p.searchString || null,\n              emails: Array.isArray(p.emails) ? p.emails : [],\n            }))\n            .filter((p) => p.name);\n          for (let i = 0; i < Math.max(1, places.length); i += 100) {\n            out.push({ json: { ...base, batchId: `${q.label}-${i / 100 + 1}`, kind: 'places', items: places.slice(i, i + 100), cost: i === 0 ? cost : { apifyUsd: 0 } } });\n          }\n        });\n        return out;"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000027",
+      "name": "Send batch to app",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ runId: $json.runId, batchId: $json.batchId, kind: $json.kind, items: $json.items, cost: $json.cost, error: $json.error || null, executionId: $execution.id }) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mekOutboundAuth1",
+          "name": "n8n → MEK app (Bearer)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000028",
+      "name": "Discovery finished",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const q = $('Build area searches').first().json;\n        return [{ json: { runId: q.runId, callbackUrl: q.callbackUrl } }];"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000029",
+      "name": "Send done to app",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ runId: $json.runId, batchId: 'discovery-done', kind: 'done', items: [] }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mekOutboundAuth1",
+          "name": "n8n → MEK app (Bearer)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000031",
+      "name": "Note 0030",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "content": "## Discovery (Google Maps)\nApp → this webhook with `{ runId, callbackUrl, budgetUrl, plan[], perSearch }`.\nOne `compass/crawler-google-places` run per area (all terms together), results back to the app in batches of 100, then `kind: done`.\nThe app prefilters, deduplicates, enriches and scores.",
+        "width": 520,
+        "height": 240
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: discovery": {
+      "main": [
+        [
+          {
+            "node": "Respond: accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond: accepted": {
+      "main": [
+        [
+          {
+            "node": "Build area searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build area searches": {
+      "main": [
+        [
+          {
+            "node": "Run Apify actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Apify actor": {
+      "main": [
+        [
+          {
+            "node": "Map places to batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map places to batches": {
+      "main": [
+        [
+          {
+            "node": "Send batch to app",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send batch to app": {
+      "main": [
+        [
+          {
+            "node": "Discovery finished",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discovery finished": {
+      "main": [
+        [
+          {
+            "node": "Send done to app",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "timezone": "Europe/Amsterdam"
+  },
+  "pinData": {}
+}

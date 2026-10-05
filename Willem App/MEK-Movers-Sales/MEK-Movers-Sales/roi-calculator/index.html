@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mek-Rider — Terugverdientijd Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e2038;
+    --card: #142c4a;
+    --text: #f4f6f8;
+    --text-soft: #93a6bf;
+    --accent: #d6483d;
+    --accent-soft: rgba(214,72,61,0.14);
+    --border: rgba(147,166,191,0.22);
+    --grid: rgba(147,166,191,0.22);
+    --line-invest: #93a6bf;
+    --line-savings: #d6483d;
+    --positive: #5fb885;
+    --negative: #e0703a;
+    --margin-bg: #1f2b22;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e2038; --card: #142c4a; --text: #f4f6f8; --text-soft: #93a6bf;
+      --accent: #d6483d; --accent-soft: rgba(214,72,61,0.14); --border: rgba(147,166,191,0.22); --grid: rgba(147,166,191,0.22);
+      --line-invest: #93a6bf; --line-savings: #d6483d; --positive: #5fb885;
+      --negative: #e0703a; --margin-bg: #1f2b22;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e2038; --card: #142c4a; --text: #f4f6f8; --text-soft: #93a6bf;
+    --accent: #d6483d; --accent-soft: rgba(214,72,61,0.14); --border: rgba(147,166,191,0.22); --grid: rgba(147,166,191,0.22);
+    --line-invest: #93a6bf; --line-savings: #d6483d; --positive: #5fb885;
+    --negative: #e0703a; --margin-bg: #1f2b22;
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+  .brand { margin-bottom: 18px; }
+  .brand-logo { height: 40px; width: auto; display: block; }
+  h1 {
+    font-family: 'Oswald', -apple-system, sans-serif; font-weight: 700; text-transform: uppercase;
+    font-style: italic; transform: skewX(-6deg); transform-origin: left; display: inline-block;
+    font-size: 1.7rem; margin: 0 0 4px; letter-spacing: 0.01em;
+  }
+  .sub { color: var(--text-soft); font-size: 0.92rem; margin: 0 0 20px; }
+
+  .steps { display: flex; gap: 8px; margin-bottom: 26px; flex-wrap: wrap; }
+  .step {
+    font-size: 0.78rem; font-weight: 600; padding: 7px 14px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--border); color: var(--text-soft);
+  }
+  .step.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step.done { color: var(--positive); border-color: var(--positive); }
+
+  .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 22px; flex-wrap: wrap; }
+  .toggle button { border: none; background: var(--card); color: var(--text-soft); padding: 9px 18px; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+  .toggle button.active { background: var(--accent); color: #fff; }
+
+  .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; overflow-x: auto; margin-bottom: 20px; }
+  .card h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-soft); margin: 0 0 16px; font-weight: 600; }
+
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 6px; }
+  .field label span.val { font-weight: 600; color: var(--accent); }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  input[type="text"], input[type="email"], input[type="tel"], select {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 0.95rem; -webkit-appearance: none; appearance: none;
+  }
+
+  .result-big { font-family: 'Oswald', -apple-system, sans-serif; font-size: 2.2rem; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0 2px; }
+  .result-big.good { color: var(--positive); }
+  .result-big.bad { color: var(--negative); }
+  .result-sub { font-size: 0.85rem; color: var(--text-soft); margin-bottom: 18px; }
+
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  .metric { background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; }
+  .metric .label { font-size: 0.72rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+  .metric .value { font-size: 1.05rem; font-weight: 600; margin-top: 2px; }
+  .metric.margin { background: var(--margin-bg); }
+
+  svg text { fill: var(--text-soft); font-size: 10px; }
+  .legend { display: flex; gap: 16px; font-size: 0.8rem; color: var(--text-soft); margin-top: 8px; flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  .sub-fields { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 16px; }
+  .lead-intro { font-size: 0.86rem; color: var(--text-soft); margin: 0 0 16px; }
+  .computed-note { font-size: 0.78rem; color: var(--text-soft); font-style: italic; }
+
+  .cta-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 11px 22px; font-size: 0.92rem; font-weight: 600; cursor: pointer; }
+  .cta-btn:hover { opacity: 0.92; }
+  .secondary-btn { background: transparent; color: var(--text-soft); border: 1px solid var(--border); border-radius: 10px; padding: 11px 22px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+  .lead-error { font-size: 0.82rem; color: var(--negative); margin-top: 10px; }
+  .lead-error.success { color: var(--positive); }
+  .nav-buttons { display: flex; justify-content: space-between; gap: 12px; margin-top: 4px; margin-bottom: 20px; }
+
+  footer { text-align: center; color: var(--text-soft); font-size: 0.75rem; margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTUVLIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDI0Ni4zMiA5NS42MSI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjUuMSwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDMpICAtLT4KICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLnN0MCB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLnN0MSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIyNDEuMzIgNzMuOTcgMTIzLjk4IDczLjk3IDEyMy45OCA3MC45OSAyMzkuNDcgNzAuOTkgMjQxLjMyIDczLjk3Ii8+CiAgPHJlY3QgY2xhc3M9InN0MSIgeD0iLjU3IiB5PSI3MC45OSIgd2lkdGg9IjEyMy4zNyIgaGVpZ2h0PSIyLjk3Ii8+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSI3MS4zNCA5NS4yOSA2OC4xIDk1LjMzIDY5LjIzIDg5LjU5IDYyLjkzIDg5LjU5IDYxLjc1IDk1LjMxIDU4LjQ3IDk1LjMyIDYxLjMgODEuNTIgNjQuNTkgODEuNTIgNjMuNDkgODYuODMgNjkuNzUgODYuODMgNzAuODYgODEuNTIgNzQuMTEgODEuNTEgNzEuMzQgOTUuMjkiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTA5LjI5LDgxLjU1bDMuMjctLjAyLTEuNzksOC43MWMtLjksNC4zOS01LjEsNi4xOC05LjQsNC45Ny0yLjI0LS42My0zLjYxLTIuODEtMy4xNi01LjEybDEuNjctOC41OCwzLjI2LjAyLTEuNjQsOC40M2MtLjMxLDEuNTcuODQsMi43NSwyLjM3LDIuODMsMS44Ny4wOSwzLjMyLS45OCwzLjctMi44NGwxLjcxLTguNDFaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTUwLjI4LDkyLjY5YzEuODYuMzcsMy42Ni0uMTgsNC44Ni0xLjYxbDEuOTksMS45NWMtMi4wOSwyLjU4LTYuMzEsMy4xNi05LjE1LDIuMDMtMi4wMi0uOC0zLjQzLTIuNTctMy42NC00Ljc1LS4yNC0yLjQzLjUzLTQuODUsMi4yNi02LjU5LDMuMDgtMy4xMSw5LjA4LTMuNTEsMTEuNzgtLjA4bC0yLjQxLDEuOTVjLTEuNjItMi4xMy00LjY1LTEuOTktNi41My0uNDYtMS4xOC45Ni0xLjgsMi40OS0xLjg0LDQuMTItLjAzLDEuNjkuOTEsMy4wOCwyLjY4LDMuNDNaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTE0MS41NSw4OC4wM2MuMTkuNDgtLjA0LDEuMDMtLjIsMS41OWgtNi43NXMtMS4xNSw1LjY5LTEuMTUsNS42OWgtMS44NnMyLjc1LTEzLjc5LDIuNzUtMTMuNzloOS40NXMtLjI3LDEuNTgtLjI3LDEuNThsLTcuNTkuMDItLjk2LDQuODloNi42WiIvPgogIDxwb2x5Z29uIGNsYXNzPSJzdDAiIHBvaW50cz0iMTE5LjIyIDk1LjMxIDExNS45NiA5NS4zMiAxMTguMjEgODQuMTMgMTEzLjczIDg0LjA5IDExNC4yNiA4MS41IDEyNi40MyA4MS41MSAxMjUuOTcgODQuMSAxMjEuNTIgODQuMSAxMTkuMjIgOTUuMzEiLz4KICA8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjI1Ljc2IDg5LjUxIDE5LjI0IDg5LjUzIDE4LjU5IDkyLjc0IDI2LjM0IDkyLjc0IDI1LjggOTUuMzMgMTQuOCA5NS4zMyAxNy42MSA4MS41IDI4LjE2IDgxLjUxIDI3LjY2IDg0LjA0IDIwLjM0IDg0LjA2IDE5Ljc1IDg3IDI2LjIxIDg3LjAyIDI1Ljc2IDg5LjUxIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTM4Ljg3LDgxLjUyaC0zLjVzLTguNywxMy43OS04LjcsMTMuNzloMy40MnMxLjgxLTIuOTMsMS44MS0yLjkzbDYuNTcuMDMuNjcsMi45MmgzLjI5cy0zLjU1LTEzLjgxLTMuNTUtMTMuODFaTTMzLjM4LDg5Ljg4bDMuMjYtNS40MSwxLjI0LDUuMzQtNC40OS4wOFoiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTMuNTEsODMuNTVjLS45Mi0xLjI5LTIuMzQtMi0zLjk0LTJsLTYuNzQtLjAzLTIuODIsMTMuODFoMy4yNXMuODMtNC4wMS44My00LjAxaDIuNzdzMi4yNCw0LjA1LDIuMjQsNC4wNWwzLjM0LS4wOC0yLjMtNC4zN2MzLjIyLS45Myw0LjczLTQuNDQsMy4zNy03LjM1Wk0xMC4zNCw4Ny40NWMtLjM2LjYtMS4xOSwxLjE4LTIuMDUsMS4yMWwtMy42Ni4wOS45My00LjY1LDMuMTkuMDVjLjYyLDAsMS4zNC4yNiwxLjY5Ljg3LjQ1Ljc4LjMzLDEuNy0uMSwyLjQ0WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0xNzIuMDEsODMuNDNjLS43Ni0xLjE2LTEuOTctMS44NS0zLjM5LTEuODZsLTYuMDItLjA0LTIuNzksMTMuNzdoMS44OHMuOS00LjQxLjktNC40MWg0LjAyczIuMjcsNC40MSwyLjI3LDQuNDFjLjc1LjAyLDEuMzQuMDgsMS45NC0uMDZsLTIuMzYtNC42M2MzLjI3LS43NCw0LjkxLTQuMiwzLjU0LTcuMTlaTTE3MC4wNiw4Ny41OWMtLjQ5Ljg0LTEuNTgsMS42Mi0yLjc2LDEuNjRsLTQuMzMuMDQsMS4yMS02LjE1LDMuODEuMDNjLjgxLDAsMS43OC4zNiwyLjI1LDEuMTMuNjQsMS4wNi40MiwyLjI5LS4xOCwzLjMxWiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0yMjUuNzksODMuMzdjLS42OS0xLjE4LTIuMDktMS43OS0zLjQzLTEuOGwtNS45Mi0uMDQtMi43OCwxMy43OCwxLjg5LS4wNC45LTQuMzdoMy45NXMyLjMyLDQuNDMsMi4zMiw0LjQzbDEuOTktLjAyLTIuNDYtNC42M2MxLjYtLjQzLDIuODgtMS40NSwzLjQ5LTIuNjguNzUtMS41Mi44Ny0zLjI1LjA2LTQuNjNaTTIyMy44Nyw4Ny42OGMtLjUzLjgyLTEuNTQsMS41My0yLjY4LDEuNTVsLTQuNDMuMDYsMS4yLTYuMTRoMy41OGMuOTgtLjAyLDIuMDguMzEsMi42LDEuMjkuNTYsMS4wNi4zMiwyLjMxLS4yOCwzLjI0WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik05Ni4xMyw4Ni4wMmMtLjMyLTEuODYtMS40Ni0zLjM0LTMuMi00LjA3LTMuMjItMS4zNS03LjA3LS43Ny05LjYsMS42OC0xLjc4LDEuNzItMi41NCw0LjE5LTIuMzIsNi42Mi4yMSwyLjM5LDEuODQsNC4yNyw0LjE0LDQuOTQsMS45Ni41Nyw0LjA4LjU0LDYuMDktLjI5LDMuNTYtMS40Niw1LjUzLTUuMTksNC44OS04Ljg5Wk05Mi45MSw4OC4xOWMtLjIxLDEuNjktMS4wOSwzLjA5LTIuMzIsMy44NS0xLjQ1Ljg5LTMuMjEsMS4wMy00LjcuMjctMS4yOC0uNjYtMS43Mi0yLjA2LTEuNjQtMy40NC4xMS0xLjY5LjkzLTMuMiwyLjIxLTQuMDUsMS40OS0uOTgsMy4zOC0xLjE1LDQuOTEtLjMsMS4yOS43MSwxLjcyLDIuMTcsMS41MywzLjY4WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0yMTIuMTYsODYuNjNjLS4xOC0yLjM4LTEuNTUtNC4zNC0zLjg5LTQuOTctMi4xOC0uNTktNC41NS0uNC02LjU0LjgtMy4wNSwxLjg0LTQuNTEsNS41MS0zLjcsOC45NS4zMywxLjQxLDEuMjIsMi41OSwyLjU3LDMuMjgsMi42OCwxLjM3LDUuODksMS4wMyw4LjI3LS42OCwyLjI5LTEuNjQsMy41MS00LjQzLDMuMjktNy4zOFpNMjA4LjU1LDkxLjk2Yy0xLjY4LDEuNzktNC4yNCwyLjI4LTYuNDMsMS40Ny0yLjg3LTEuMDctMi45My00Ljg5LTEuNTMtNy4zOCwxLjQxLTIuNTEsNC4zMS0zLjY3LDcuMDUtMi43OCwxLjM3LjQ1LDIuMzYsMS41OCwyLjU4LDMuMDIuMzEsMi4wMi0uMjEsNC4xLTEuNjgsNS42N1oiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTkxLjc5LDk1LjMybDItMTAuMjctNi4zMSw4LjI2Yy0uMTMuNDUtMS4wMy42MS0xLjIuMThsLTMuMjktOC41OC0yLjExLDEwLjM5aC0xLjgxczIuNzctMTMuNzYsMi43Ny0xMy43NmwxLjY0LS4wMywzLjcsOS43OCw3LjI5LTkuNzRjLjYxLS4wOSwxLjE0LS4wOSwxLjg0LDBsLTIuNzMsMTMuNzItMS43OS4wMloiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjM3LjU2LDg5LjA1bC02LjguMDMtLjkxLDQuNThoNy45M3MtLjMzLDEuNjctLjMzLDEuNjdoLTkuODJzMi44MS0xMy44LDIuODEtMTMuOGg5LjM5YzAsLjU3LS4xMywxLjAzLS4yOSwxLjU4aC03LjVzLS44Nyw0LjMtLjg3LDQuM2w2LjY4LjA0LS4yOCwxLjZaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTE1OC4xNiw4NS42MWMtLjM0LTEuNjgtMS40Ni0zLjA2LTMuMDYtMy43LTMuNDUtMS4zOC03LjQ3LS4yOC05LjYxLDIuNzgtMi4yNCwzLjE4LTIuMjIsOC40NiwxLjQ4LDEwLjE0LDIuNTcsMS4xNyw1LjY4LjksOC4wNS0uODUsMi42Ni0xLjk3LDMuNzYtNS4yMywzLjEzLTguMzdaTTE1Ni4zNiw4OC41NWMtLjU5LDMuNjEtMy43Nyw1Ljc5LTcuMjQsNS4xMy0yLjE0LS40LTMuMzMtMi4xMS0zLjI2LTQuMjcuMS0zLjExLDIuMDYtNS44OCw1LjE5LTYuMzcsMS43LS4yNywzLjQ3LjE1LDQuNTQsMS41Ljg4LDEuMTIsMSwyLjU2Ljc3LDRaIi8+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIxLjMxIDYzLjUzIDE1LjIzIC4wMiAzNS40OCAuMDIgNDkuMzYgMzEuNzEgNzYuNyAuMDYgOTcuNjUgLjA2IDg0LjE5IDYzLjU0IDY0Ljk4IDYzLjU0IDcyLjM1IDI4LjI2IDQ4LjQ3IDU2LjI4IDQwLjEyIDU2LjI4IDI4LjM2IDI3LjkxIDIwLjM3IDYzLjUzIDEuMzEgNjMuNTMiLz4KICA8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjEwNy42MyAwIDE2Ny40NiAwIDE2NC41OCAxNC45OCAxMjQuNTMgMTQuOTggMTIyLjY3IDI0LjM3IDE1Ni4wMyAyNC4zNyAxNTMuMyAzOC44OSAxMTkuODEgMzguODkgMTE3Ljk3IDQ4Ljc5IDE1OC4yNyA0OC43OSAxNTUuNjYgNjMuNTQgOTQuODcgNjMuNTQgMTA3LjYzIDAiLz4KICA8Zz4KICAgIDxwb2x5Z29uIGNsYXNzPSJzdDEiIHBvaW50cz0iMTk0Ljk1IDguNjEgMTk2LjU3IC4wNCAxNzcuMDggLjA0IDE3MS44NiAyNy44MSAxOTQuOTUgOC42MSIvPgogICAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIyNDYuMzIgLjAyIDIyMy45OCAuMDIgMTkwLjU1IDMxLjkzIDE5NC40IDExLjUyIDE3MS4zMiAzMC43MSAxNjUuMTUgNjMuNTQgMTg0Ljk3IDYzLjU0IDE4Ni4wNyA1Ny41OCAyMDIuNyA0MS45NiAyMTUuOTkgNjMuNTIgMjM4LjE5IDYzLjUyIDIxNi43MiAyOC43IDI0Ni4zMiAuMDIiLz4KICA8L2c+Cjwvc3ZnPg==" alt="MEK logo" class="brand-logo">
+  </div>
+  <h1>Mek-Rider</h1>
+  <p class="sub">Terugverdientijd calculator — salesflow, efficiëntieconfiguratie en kostenberekening.</p>
+
+  <div class="steps" id="steps">
+    <div class="step active" data-step="1">1. Salesflow</div>
+    <div class="step" data-step="2">2. Efficiëntie configuratie</div>
+    <div class="step" data-step="3">3. Kostenberekening</div>
+    <div class="step" data-step="4">4. Vergelijking</div>
+  </div>
+
+  <!-- PAGE 1: SALESFLOW -->
+  <div id="page-1">
+    <div class="card">
+      <h2>Gegevens</h2>
+      <p class="lead-intro">Vul uw gegevens in om de berekening te starten. We gebruiken dit alleen om, op uw verzoek, een offerte of pilotgesprek voor te bereiden.</p>
+      <div class="field">
+        <label>Naam</label>
+        <input type="text" id="lead-name" placeholder="Voor- en achternaam">
+      </div>
+      <div class="field">
+        <label>Bedrijf</label>
+        <input type="text" id="lead-company" placeholder="Bedrijfsnaam">
+      </div>
+      <div class="field">
+        <label>E-mailadres *</label>
+        <input type="email" id="lead-email" placeholder="naam@bedrijf.nl" required>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Telefoonnummer</label>
+        <input type="tel" id="lead-phone" placeholder="06 12345678">
+      </div>
+    </div>
+    <div class="nav-buttons" style="justify-content:flex-end;">
+      <button class="cta-btn" id="btn-to-2">Volgende: Efficiëntie →</button>
+    </div>
+    <div class="lead-error" id="lead-error" style="text-align:right;"></div>
+  </div>
+
+  <!-- PAGE 2: EFFICIENCY CONFIG -->
+  <div id="page-2" style="display:none;">
+    <div class="card">
+      <h2>Rijtijd &amp; efficiëntie</h2>
+      <p class="lead-intro">De efficiëntiewinst wordt berekend op basis van rijtijd (lengte × breedte × rijsnelheid) en laad-/lostijd: hoeveel tijd bespaart de Mek-Mover EPT doordat hij meerdere pallets per rit meeneemt, ten opzichte van een standaard EPT die er telkens 1 vervoert.</p>
+      <div class="grid">
+        <div>
+          <div class="field">
+            <label>Lengte traject <span class="val" id="v-routeLength">40 m</span></label>
+            <input type="range" id="routeLength" min="5" max="200" step="5" value="40">
+          </div>
+          <div class="field">
+            <label>Breedte traject <span class="val" id="v-routeWidth">20 m</span></label>
+            <input type="range" id="routeWidth" min="5" max="200" step="5" value="20">
+          </div>
+          <div class="field">
+            <label>Rijsnelheid <span class="val" id="v-speed">12 km/u</span></label>
+            <input type="range" id="speed" min="3" max="20" step="0.5" value="12">
+          </div>
+          <div class="field">
+            <label>Routetype</label>
+            <select id="routeType">
+              <option value="rect" selected>Rechthoekig (lengte + breedte — realistisch voor gangpaden)</option>
+              <option value="diag">Rechte lijn (diagonaal)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label style="justify-content:flex-start; gap:8px;"><input type="checkbox" id="routeReturn" style="width:auto;"> Inclusief retour (heen en terug)</label>
+          </div>
+          <div class="field">
+            <label>Laad-/lostijd per pallet <span class="val" id="v-loadtime">30 sec</span></label>
+            <input type="range" id="loadtime" min="0" max="120" step="5" value="30">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>Pallets per rit — Mek-Mover EPT <span class="val" id="v-palletsMek">2</span></label>
+            <input type="range" id="palletsMek" min="1" max="2" step="1" value="2">
+          </div>
+        </div>
+        <div>
+          <div class="metrics" style="grid-template-columns:1fr;">
+            <div class="metric"><div class="label">Afstand per rit</div><div class="value" id="m-distance">60 m</div></div>
+            <div class="metric"><div class="label">Rijtijd per rit</div><div class="value" id="m-ridetime">18 sec</div></div>
+            <div class="metric"><div class="label">Cyclustijd — standaard EPT (1 pallet)</div><div class="value" id="m-cycleStandard">48 sec</div></div>
+            <div class="metric"><div class="label">Cyclustijd — Mek-Mover EPT (per pallet)</div><div class="value" id="m-cycleMek">39 sec/pallet</div></div>
+            <div class="metric margin"><div class="label">Berekende efficiëntiewinst</div><div class="value" id="m-effComputed">19%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="nav-buttons">
+      <button class="secondary-btn" id="btn-to-1">← Terug naar salesflow</button>
+      <button class="cta-btn" id="btn-to-3">Volgende: Kosten →</button>
+    </div>
+  </div>
+
+  <!-- PAGE 3: COST CALCULATION -->
+  <div id="page-3" style="display:none;">
+    <div class="toggle">
+      <button id="btn-koop" class="active">Koop</button>
+      <button id="btn-lease">Lease</button>
+      <button id="btn-aas">As a Service</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Invoer</h2>
+        <div class="field">
+          <label>Aanschafwaarde EPT <span class="val" id="v-price">€22.500</span></label>
+          <input type="range" id="price" min="5000" max="40000" step="500" value="22500">
+        </div>
+        <div class="field">
+          <label>Prijs concurrerende (standaard) EPT <span class="val" id="v-competitorPrice">€14.000</span></label>
+          <input type="range" id="competitorPrice" min="0" max="40000" step="500" value="14000">
+        </div>
+        <div class="field">
+          <label>Jaarkosten medewerker (beladen) <span class="val" id="v-wage">€45.000</span></label>
+          <input type="range" id="wage" min="30000" max="70000" step="1000" value="45000">
+        </div>
+        <div class="field">
+          <label>Efficiëntiewinst <span class="val" id="v-eff">30%</span></label>
+          <input type="hidden" id="eff" value="30">
+          <div class="computed-note">Berekend op pagina 2 (Efficiëntie configuratie).</div>
+        </div>
+        <div class="field">
+          <label>Inzet op pallettransport <span class="val" id="v-usage">100%</span></label>
+          <input type="range" id="usage" min="10" max="100" step="5" value="100">
+        </div>
+        <div class="field">
+          <label>Bedrijfsuren per dag <span class="val" id="v-hours">8 uur</span></label>
+          <input type="range" id="hours" min="1" max="24" step="1" value="8">
+        </div>
+
+        <div class="sub-fields" id="leaseFields" style="display:none;">
+          <div class="field">
+            <label>Leasetermijn <span class="val" id="v-term">60 mnd</span></label>
+            <input type="range" id="term" min="12" max="84" step="6" value="60">
+          </div>
+          <div class="field">
+            <label>Lease rente (jaarlijks) <span class="val" id="v-rate">6%</span></label>
+            <input type="range" id="rate" min="1" max="15" step="0.5" value="6">
+          </div>
+          <div class="field">
+            <label>Leasebedrag concurrent / mnd <span class="val" id="v-competitorLease">€500</span></label>
+            <input type="range" id="competitorLease" min="0" max="3000" step="25" value="500">
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label style="justify-content:flex-start; gap:8px;"><input type="checkbox" id="useLeasePremium" style="width:auto;"> Terugverdientijd (Lease) berekenen op verschil met concurrent leasebedrag i.p.v. volledig leasebedrag</label>
+          </div>
+        </div>
+
+        <div class="sub-fields" id="aasFields" style="display:none;">
+          <div class="field">
+            <label>Contractduur <span class="val" id="v-termAas">60 mnd</span></label>
+            <input type="range" id="termAas" min="12" max="84" step="6" value="60">
+          </div>
+          <div class="field">
+            <label>Maandtarief (all-in) <span class="val" id="v-fee">€800</span></label>
+            <input type="range" id="fee" min="300" max="1500" step="25" value="800">
+          </div>
+          <div class="field">
+            <label>Truckkosten (onderhoud e.d.) / jaar <span class="val" id="v-truckcost">€1.000</span></label>
+            <input type="range" id="truckcost" min="200" max="3000" step="100" value="1000">
+          </div>
+          <div class="field">
+            <label>Restwaarde <span class="val" id="v-residual">20%</span></label>
+            <input type="range" id="residual" min="0" max="50" step="5" value="20">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Resultaat klant</h2>
+        <div class="result-big good" id="payback">20 mnd</div>
+        <div class="result-sub" id="paybackSub">Terugverdientijd op basis van jaarlijkse besparing</div>
+        <div class="metrics" id="metricsGrid">
+          <div class="metric"><div class="label">Besparing / jaar</div><div class="value" id="m-savings">€13.500</div></div>
+          <div class="metric"><div class="label">Besparing over 5 jaar</div><div class="value" id="m-savings5">€67.500</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="marginCard" style="display:none;">
+      <h2>Mek-Mover marge (intern — As a Service)</h2>
+      <div class="metrics" id="marginGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2 id="chartTitle">Cumulatieve besparing vs. investering</h2>
+      <svg id="chart" viewBox="0 0 780 320" style="width:100%; height:auto; display:block;"></svg>
+      <div class="legend" id="legend">
+        <span><span class="dot" style="background:var(--line-savings)"></span>Cumulatieve besparing</span>
+        <span><span class="dot" style="background:var(--line-invest)"></span>Aanschafwaarde</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Interesse?</h2>
+      <p class="lead-intro">Vraag op basis van deze berekening een offerte of pilotgesprek aan.</p>
+      <button class="cta-btn" id="quote-submit">Vraag offerte / pilot aan</button>
+      <div class="lead-error" id="quote-confirm"></div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="secondary-btn" id="btn-to-2-back">← Terug naar efficiëntie</button>
+      <button class="cta-btn" id="btn-to-4">Vergelijk alle opties →</button>
+    </div>
+  </div>
+
+  <!-- PAGE 4: COMPARISON -->
+  <div id="page-4" style="display:none;">
+    <div class="card">
+      <h2>Vergelijking: Koop vs. Lease vs. As a Service</h2>
+      <p class="lead-intro">Gebaseerd op de invoer van pagina 2 en 3. Elk model gebruikt zijn eigen ingestelde looptijd/termijn.</p>
+      <div style="overflow-x:auto;">
+        <table id="compareTable" style="width:100%; border-collapse:collapse; font-size:0.86rem;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="text-align:left; padding:8px 10px; color:var(--text-soft); font-weight:600;">Kenmerk</th>
+              <th style="text-align:left; padding:8px 10px; color:var(--text-soft); font-weight:600;">Koop</th>
+              <th style="text-align:left; padding:8px 10px; color:var(--text-soft); font-weight:600;">Lease</th>
+              <th style="text-align:left; padding:8px 10px; color:var(--text-soft); font-weight:600;">As a Service</th>
+            </tr>
+          </thead>
+          <tbody id="compareBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Offerte</h2>
+      <p class="lead-intro">Genereer op basis van alle ingevulde gegevens direct een offerte voor de klant (PDF, met offertenummer, datum en 30 dagen geldigheid).</p>
+      <div class="field">
+        <label style="justify-content:flex-start; gap:8px;"><input type="checkbox" id="offer-all-options" style="width:auto;" checked> Eén offerte met alle 3 de opties (Koop, Lease, As a Service) naast elkaar</label>
+      </div>
+      <div class="grid">
+        <div class="field" id="offer-model-field" style="display:none;">
+          <label>Model</label>
+          <select id="offer-model">
+            <option value="koop">Koop</option>
+            <option value="lease">Lease</option>
+            <option value="aas">As a Service</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Aantal trucks <span class="val" id="v-offer-qty">1</span></label>
+          <input type="range" id="offer-qty" min="1" max="20" step="1" value="1">
+        </div>
+      </div>
+      <button class="cta-btn" id="offer-pdf">📄 Genereer offerte (PDF)</button>
+      <div class="lead-error" id="offer-status"></div>
+    </div>
+
+    <div class="card">
+      <h2>Export</h2>
+      <p class="lead-intro">Download dit vergelijkingsoverzicht als gedateerd PDF-document.</p>
+      <button class="cta-btn" id="pdf-download">📄 Download PDF</button>
+      <div class="lead-error" id="pdf-status"></div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="secondary-btn" id="btn-to-3-back">← Terug naar kosten</button>
+      <span></span>
+    </div>
+  </div>
+
+  <footer>Indicatieve berekening — vervang de aannames door jullie eigen cijfers.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+// ---------- Navigation ----------
+const pages = { 1: document.getElementById('page-1'), 2: document.getElementById('page-2'), 3: document.getElementById('page-3'), 4: document.getElementById('page-4') };
+const stepEls = document.querySelectorAll('.step');
+let leadData = { name: '', company: '', email: '', phone: '' };
+
+function showPage(n) {
+  Object.keys(pages).forEach(function(k) { pages[k].style.display = (parseInt(k) === n) ? 'block' : 'none'; });
+  stepEls.forEach(function(el) {
+    const s = parseInt(el.dataset.step);
+    el.classList.toggle('active', s === n);
+    el.classList.toggle('done', s < n);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.getElementById('btn-to-2').addEventListener('click', function() {
+  const name = document.getElementById('lead-name').value.trim();
+  const company = document.getElementById('lead-company').value.trim();
+  const email = document.getElementById('lead-email').value.trim();
+  const phone = document.getElementById('lead-phone').value.trim();
+  const errorEl = document.getElementById('lead-error');
+  if (!email || !email.includes('@')) {
+    errorEl.textContent = 'Vul een geldig e-mailadres in om verder te gaan.';
+    return;
+  }
+  errorEl.textContent = '';
+  leadData = { name: name, company: company, email: email, phone: phone };
+  showPage(2);
+});
+document.getElementById('btn-to-1').addEventListener('click', function() { showPage(1); });
+document.getElementById('btn-to-3').addEventListener('click', function() { showPage(3); calc(); });
+document.getElementById('btn-to-2-back').addEventListener('click', function() { showPage(2); });
+document.getElementById('btn-to-4').addEventListener('click', function() { showPage(4); renderComparison(); document.getElementById('offer-model').value = mode; });
+document.getElementById('btn-to-3-back').addEventListener('click', function() { showPage(3); });
+
+// ---------- Page 3: mode toggle ----------
+let mode = 'koop';
+const btnKoop = document.getElementById('btn-koop');
+const btnLease = document.getElementById('btn-lease');
+const btnAas = document.getElementById('btn-aas');
+const leaseFields = document.getElementById('leaseFields');
+const aasFields = document.getElementById('aasFields');
+const marginCard = document.getElementById('marginCard');
+const chartTitle = document.getElementById('chartTitle');
+const legend = document.getElementById('legend');
+
+btnKoop.addEventListener('click', function() { setMode('koop'); });
+btnLease.addEventListener('click', function() { setMode('lease'); });
+btnAas.addEventListener('click', function() { setMode('aas'); });
+
+function setMode(m) {
+  mode = m;
+  btnKoop.classList.toggle('active', m === 'koop');
+  btnLease.classList.toggle('active', m === 'lease');
+  btnAas.classList.toggle('active', m === 'aas');
+  leaseFields.style.display = m === 'lease' ? 'block' : 'none';
+  aasFields.style.display = m === 'aas' ? 'block' : 'none';
+  marginCard.style.display = m === 'aas' ? 'block' : 'none';
+  if (m === 'koop') {
+    chartTitle.textContent = 'Cumulatieve besparing vs. aanschafwaarde en prijsverschil';
+    legend.innerHTML = '<span><span class="dot" style="background:var(--line-savings)"></span>Cumulatieve besparing</span><span><span class="dot" style="background:var(--line-invest)"></span>Volledige aanschafwaarde</span><span><span class="dot" style="background:var(--accent)"></span>Prijsverschil met concurrent</span>';
+  } else if (m === 'lease') {
+    chartTitle.textContent = 'Netto cashflow tijdens leaseperiode';
+    legend.innerHTML = '<span><span class="dot" style="background:var(--line-savings)"></span>Cumulatieve netto voordeel</span><span><span class="dot" style="background:var(--line-invest)"></span>Break-even (€0)</span>';
+  } else {
+    chartTitle.textContent = 'Netto cashflow tijdens As a Service contract';
+    legend.innerHTML = '<span><span class="dot" style="background:var(--line-savings)"></span>Cumulatieve netto voordeel</span><span><span class="dot" style="background:var(--line-invest)"></span>Break-even (€0)</span>';
+  }
+  calc();
+}
+
+function fmtEUR(n) {
+  const sign = n < 0 ? '-' : '';
+  return sign + '€' + Math.round(Math.abs(n)).toLocaleString('nl-NL');
+}
+function fmtTime(seconds) {
+  if (seconds < 60) return Math.round(seconds) + ' sec';
+  const min = Math.floor(seconds / 60);
+  const sec = Math.round(seconds % 60);
+  return min + ' min ' + sec + ' sec';
+}
+function monthlyLeasePayment(principal, annualRatePct, termMonths) {
+  const r = (annualRatePct / 100) / 12;
+  if (r === 0) return principal / termMonths;
+  return principal * r / (1 - Math.pow(1 + r, -termMonths));
+}
+
+const els = {
+  price: document.getElementById('price'), wage: document.getElementById('wage'),
+  eff: document.getElementById('eff'), usage: document.getElementById('usage'),
+  hours: document.getElementById('hours'), term: document.getElementById('term'),
+  rate: document.getElementById('rate'), competitorLease: document.getElementById('competitorLease'),
+  termAas: document.getElementById('termAas'),
+  fee: document.getElementById('fee'), truckcost: document.getElementById('truckcost'),
+  residual: document.getElementById('residual'), competitorPrice: document.getElementById('competitorPrice'),
+};
+const out = {
+  price: document.getElementById('v-price'), wage: document.getElementById('v-wage'),
+  usage: document.getElementById('v-usage'), hours: document.getElementById('v-hours'),
+  term: document.getElementById('v-term'), rate: document.getElementById('v-rate'),
+  competitorLease: document.getElementById('v-competitorLease'),
+  termAas: document.getElementById('v-termAas'), fee: document.getElementById('v-fee'),
+  truckcost: document.getElementById('v-truckcost'), residual: document.getElementById('v-residual'),
+  competitorPrice: document.getElementById('v-competitorPrice'),
+};
+
+function calc() {
+  const price = parseFloat(els.price.value);
+  const wage = parseFloat(els.wage.value);
+  const eff = parseFloat(els.eff.value) / 100;
+  const usage = parseFloat(els.usage.value) / 100;
+  const hours = parseFloat(els.hours.value);
+  const hoursFactor = hours / 8; // jaarkosten medewerker is gebaseerd op een standaard 8-uursdienst
+
+  out.price.textContent = fmtEUR(price);
+  out.wage.textContent = fmtEUR(wage);
+  out.usage.textContent = Math.round(usage * 100) + '%';
+  out.hours.textContent = hours + ' uur';
+
+  const annualSavings = wage * eff * usage * hoursFactor;
+  const monthlySavings = annualSavings / 12;
+  const paybackEl = document.getElementById('payback');
+  const paybackSubEl = document.getElementById('paybackSub');
+  const metricsGrid = document.getElementById('metricsGrid');
+
+  if (mode === 'koop') {
+    const competitorPrice = parseFloat(els.competitorPrice.value);
+    out.competitorPrice.textContent = fmtEUR(competitorPrice);
+    const priceDiff = Math.max(price - competitorPrice, 0);
+
+    const paybackMonthsPremium = monthlySavings > 0 ? priceDiff / monthlySavings : Infinity;
+    const paybackMonthsFull = monthlySavings > 0 ? price / monthlySavings : Infinity;
+
+    function fmtPayback(months) {
+      if (!isFinite(months)) return '—';
+      const years = months / 12;
+      return months < 12 ? Math.round(months) + ' mnd' : years.toFixed(1).replace('.', ',') + ' jr (' + Math.round(months) + ' mnd)';
+    }
+
+    if (isFinite(paybackMonthsPremium)) {
+      paybackEl.textContent = fmtPayback(paybackMonthsPremium);
+      paybackEl.classList.remove('bad');
+      paybackEl.classList.toggle('good', paybackMonthsPremium <= 24);
+      paybackSubEl.textContent = 'Terugverdientijd van de meerprijs (' + fmtEUR(priceDiff) + ') t.o.v. concurrent, op basis van ' + fmtEUR(annualSavings) + '/jaar besparing';
+    } else {
+      paybackEl.textContent = '—';
+      paybackSubEl.textContent = 'Geen besparing ingevoerd';
+    }
+    metricsGrid.innerHTML =
+      '<div class="metric"><div class="label">Besparing / jaar</div><div class="value">' + fmtEUR(annualSavings) + '</div></div>' +
+      '<div class="metric"><div class="label">Besparing over 5 jaar</div><div class="value">' + fmtEUR(annualSavings * 5) + '</div></div>' +
+      '<div class="metric"><div class="label">Prijsverschil met concurrent</div><div class="value">' + fmtEUR(priceDiff) + '</div></div>' +
+      '<div class="metric margin"><div class="label">Terugverdientijd meerprijs</div><div class="value">' + fmtPayback(paybackMonthsPremium) + '</div></div>' +
+      '<div class="metric margin"><div class="label">Terugverdientijd volledige aanschaf</div><div class="value">' + fmtPayback(paybackMonthsFull) + '</div></div>';
+    drawChartKoop(price, priceDiff, monthlySavings);
+
+  } else if (mode === 'lease') {
+    const term = parseFloat(els.term.value);
+    const rate = parseFloat(els.rate.value);
+    const competitorLease = parseFloat(els.competitorLease.value);
+    const useLeasePremium = document.getElementById('useLeasePremium').checked;
+    out.term.textContent = term + ' mnd';
+    out.rate.textContent = rate + '%';
+    out.competitorLease.textContent = fmtEUR(competitorLease);
+
+    const leasePayment = monthlyLeasePayment(price, rate, term);
+    const leaseDiff = Math.max(leasePayment - competitorLease, 0);
+    const effectiveLeaseCost = useLeasePremium ? leaseDiff : leasePayment;
+
+    const netMonthly = monthlySavings - effectiveLeaseCost;
+    const totalLeaseCost = leasePayment * term;
+    setRecurringResult(netMonthly, useLeasePremium ? 'het leasebedragverschil met concurrent' : 'het leasebedrag');
+    metricsGrid.innerHTML =
+      '<div class="metric"><div class="label">Leasebedrag Mek-Mover / mnd</div><div class="value">' + fmtEUR(leasePayment) + '</div></div>' +
+      '<div class="metric"><div class="label">Leasebedrag concurrent / mnd</div><div class="value">' + fmtEUR(competitorLease) + '</div></div>' +
+      '<div class="metric"><div class="label">Verschil / mnd</div><div class="value">' + fmtEUR(leaseDiff) + '</div></div>' +
+      '<div class="metric"><div class="label">Netto voordeel / mnd</div><div class="value">' + fmtEUR(netMonthly) + '</div></div>' +
+      '<div class="metric"><div class="label">Besparing / mnd</div><div class="value">' + fmtEUR(monthlySavings) + '</div></div>' +
+      '<div class="metric"><div class="label">Totale leasekosten Mek-Mover (' + term + ' mnd)</div><div class="value">' + fmtEUR(totalLeaseCost) + '</div></div>';
+    drawChartRecurring(monthlySavings, effectiveLeaseCost, term);
+    chartTitle.textContent = useLeasePremium ? 'Netto cashflow t.o.v. leasebedrag concurrent' : 'Netto cashflow tijdens leaseperiode';
+    legend.innerHTML = '<span><span class="dot" style="background:var(--line-savings)"></span>Cumulatieve netto voordeel</span><span><span class="dot" style="background:var(--line-invest)"></span>Break-even (€0)</span>';
+
+  } else {
+    const term = parseFloat(els.termAas.value);
+    const fee = parseFloat(els.fee.value);
+    const truckCostYear = parseFloat(els.truckcost.value);
+    const residualPct = parseFloat(els.residual.value);
+    out.termAas.textContent = term + ' mnd';
+    out.fee.textContent = fmtEUR(fee);
+    out.truckcost.textContent = fmtEUR(truckCostYear);
+    out.residual.textContent = residualPct + '%';
+    const netMonthly = monthlySavings - fee;
+    const totalFeeCost = fee * term;
+    setRecurringResult(netMonthly, 'het maandtarief');
+    metricsGrid.innerHTML =
+      '<div class="metric"><div class="label">Maandtarief (all-in)</div><div class="value">' + fmtEUR(fee) + '</div></div>' +
+      '<div class="metric"><div class="label">Netto voordeel / mnd</div><div class="value">' + fmtEUR(netMonthly) + '</div></div>' +
+      '<div class="metric"><div class="label">Besparing / mnd</div><div class="value">' + fmtEUR(monthlySavings) + '</div></div>' +
+      '<div class="metric"><div class="label">Totale kosten (' + term + ' mnd)</div><div class="value">' + fmtEUR(totalFeeCost) + '</div></div>';
+
+    const residualValue = price * (residualPct / 100);
+    const depreciationTotal = price - residualValue;
+    const depreciationMonthly = depreciationTotal / term;
+    const opexMonthly = truckCostYear / 12;
+    const totalCostMonthly = depreciationMonthly + opexMonthly;
+    const marginMonthly = fee - totalCostMonthly;
+    const marginPct = fee > 0 ? (marginMonthly / fee) * 100 : 0;
+    document.getElementById('marginGrid').innerHTML =
+      '<div class="metric margin"><div class="label">Afschrijving / mnd</div><div class="value">' + fmtEUR(depreciationMonthly) + '</div></div>' +
+      '<div class="metric margin"><div class="label">Operationele kosten / mnd</div><div class="value">' + fmtEUR(opexMonthly) + '</div></div>' +
+      '<div class="metric margin"><div class="label">Totale kosten / mnd</div><div class="value">' + fmtEUR(totalCostMonthly) + '</div></div>' +
+      '<div class="metric margin"><div class="label">Marge / mnd (' + marginPct.toFixed(0) + '%)</div><div class="value">' + fmtEUR(marginMonthly) + '</div></div>' +
+      '<div class="metric margin"><div class="label">Restwaarde na contract</div><div class="value">' + fmtEUR(residualValue) + '</div></div>' +
+      '<div class="metric margin"><div class="label">Totale marge (' + term + ' mnd)</div><div class="value">' + fmtEUR(marginMonthly * term) + '</div></div>';
+    drawChartRecurring(monthlySavings, fee, term);
+  }
+}
+
+function setRecurringResult(netMonthly, costLabel) {
+  const paybackEl = document.getElementById('payback');
+  const paybackSubEl = document.getElementById('paybackSub');
+  if (netMonthly > 0) {
+    paybackEl.textContent = 'Direct positief';
+    paybackEl.classList.remove('bad'); paybackEl.classList.add('good');
+    paybackSubEl.textContent = 'Vanaf maand 1 is de besparing hoger dan ' + costLabel;
+  } else {
+    paybackEl.textContent = fmtEUR(netMonthly) + '/mnd';
+    paybackEl.classList.remove('good'); paybackEl.classList.add('bad');
+    paybackSubEl.textContent = (costLabel.charAt(0).toUpperCase() + costLabel.slice(1)) + ' ligt hoger dan de maandelijkse besparing';
+  }
+}
+
+function drawChartKoop(price, priceDiff, monthlySavings) {
+  const svg = document.getElementById('chart');
+  const months = 36, W = 780, H = 320, padL = 65, padR = 20, padT = 20, padB = 36;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const maxVal = Math.max(price, monthlySavings * months) * 1.1 || 1;
+  function x(m) { return padL + (m / months) * plotW; }
+  function y(v) { return padT + plotH - (v / maxVal) * plotH; }
+  let s = '';
+  for (let i = 0; i <= 5; i++) {
+    const v = (maxVal / 5) * i, yy = y(v);
+    s += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '" stroke="var(--grid)" stroke-width="1"/>';
+    s += '<text x="' + (padL - 8) + '" y="' + (yy + 3) + '" text-anchor="end">' + ('€' + Math.round(v/1000) + 'k') + '</text>';
+  }
+  for (let m = 0; m <= months; m += 6) s += '<text x="' + x(m) + '" y="' + (H - padB + 16) + '" text-anchor="middle">' + m + 'm</text>';
+
+  // Volledige aanschafwaarde (stippellijn, grijs)
+  let investPath = '';
+  for (let m = 0; m <= months; m++) investPath += (m === 0 ? 'M' : 'L') + x(m) + ',' + y(price) + ' ';
+  s += '<path d="' + investPath + '" fill="none" stroke="var(--line-invest)" stroke-width="2" stroke-dasharray="5,4"/>';
+
+  // Prijsverschil met concurrent (stippellijn, accentkleur)
+  let diffPath = '';
+  for (let m = 0; m <= months; m++) diffPath += (m === 0 ? 'M' : 'L') + x(m) + ',' + y(priceDiff) + ' ';
+  s += '<path d="' + diffPath + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="2,3"/>';
+
+  // Cumulatieve besparing
+  let savingsPath = '';
+  for (let m = 0; m <= months; m++) savingsPath += (m === 0 ? 'M' : 'L') + x(m) + ',' + y(monthlySavings * m) + ' ';
+  s += '<path d="' + savingsPath + '" fill="none" stroke="var(--line-savings)" stroke-width="2.5"/>';
+
+  if (monthlySavings > 0) {
+    const breakEvenFull = price / monthlySavings;
+    if (breakEvenFull <= months) {
+      const bx = x(breakEvenFull), by = y(price);
+      s += '<circle cx="' + bx + '" cy="' + by + '" r="5" fill="var(--positive)"/>';
+      s += '<line x1="' + bx + '" y1="' + padT + '" x2="' + bx + '" y2="' + (H-padB) + '" stroke="var(--positive)" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>';
+    }
+    const breakEvenDiff = priceDiff / monthlySavings;
+    if (breakEvenDiff <= months) {
+      const bx2 = x(breakEvenDiff), by2 = y(priceDiff);
+      s += '<circle cx="' + bx2 + '" cy="' + by2 + '" r="5" fill="var(--accent)"/>';
+      s += '<line x1="' + bx2 + '" y1="' + padT + '" x2="' + bx2 + '" y2="' + (H-padB) + '" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>';
+    }
+  }
+
+  s += '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>';
+  s += '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>';
+  svg.innerHTML = s;
+}
+
+function drawChartRecurring(monthlySavings, monthlyCost, term) {
+  const svg = document.getElementById('chart');
+  const months = Math.max(term, 12), W = 780, H = 320, padL = 65, padR = 20, padT = 20, padB = 36;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const netMonthly = monthlySavings - monthlyCost;
+  const cumAt = function(m) { return netMonthly * m; };
+  const maxAbs = Math.max(Math.abs(cumAt(0)), Math.abs(cumAt(months)), 1) * 1.2;
+  function x(m) { return padL + (m / months) * plotW; }
+  function y(v) { return padT + plotH / 2 - (v / maxAbs) * (plotH / 2); }
+  let s = '';
+  for (let i = -4; i <= 4; i++) {
+    const v = (maxAbs / 4) * i, yy = y(v);
+    s += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (W - padR) + '" y2="' + yy + '" stroke="var(--grid)" stroke-width="1"/>';
+    s += '<text x="' + (padL - 8) + '" y="' + (yy + 3) + '" text-anchor="end">' + ((v>=0?'€':'-€') + Math.round(Math.abs(v)/1000) + 'k') + '</text>';
+  }
+  const stepEvery = Math.max(6, Math.round(months/6/6)*6);
+  for (let m = 0; m <= months; m += stepEvery) s += '<text x="' + x(m) + '" y="' + (H - padB + 16) + '" text-anchor="middle">' + m + 'm</text>';
+  const zeroY = y(0);
+  s += '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY + '" stroke="var(--line-invest)" stroke-width="2" stroke-dasharray="5,4"/>';
+  let path = '';
+  for (let m = 0; m <= months; m++) path += (m === 0 ? 'M' : 'L') + x(m) + ',' + y(cumAt(m)) + ' ';
+  s += '<path d="' + path + '" fill="none" stroke="var(--line-savings)" stroke-width="2.5"/>';
+  s += '<line x1="' + padL + '" y1="' + (H - padB) + '" x2="' + (W - padR) + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>';
+  s += '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (H - padB) + '" stroke="var(--border)" stroke-width="1"/>';
+  svg.innerHTML = s;
+}
+
+document.getElementById('quote-submit').addEventListener('click', function() {
+  const modeLabel = mode === 'koop' ? 'Koop' : (mode === 'lease' ? 'Lease' : 'As a Service');
+  const paybackText = document.getElementById('payback').textContent;
+  const paybackSubText = document.getElementById('paybackSub').textContent;
+  const subject = 'Offerteaanvraag Mek-Rider — ' + (leadData.company || leadData.name || 'nieuwe aanvraag');
+  const bodyLines = [
+    'Naam: ' + leadData.name, 'Bedrijf: ' + leadData.company, 'E-mail: ' + leadData.email, 'Telefoon: ' + leadData.phone, '',
+    'Model: ' + modeLabel, 'Aanschafwaarde: ' + document.getElementById('v-price').textContent,
+    'Efficiëntiewinst: ' + document.getElementById('v-eff').textContent,
+    'Resultaat: ' + paybackText + ' — ' + paybackSubText, '', 'Aangevraagd via de Mek-Rider calculator.'
+  ];
+  const body = bodyLines.join('\\n');
+  const mailto = 'mailto:info@mek-mover.nl?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+  const confirmEl = document.getElementById('quote-confirm');
+  confirmEl.textContent = 'Uw e-mailprogramma wordt geopend met de vooringevulde aanvraag.';
+  confirmEl.classList.add('success');
+  window.location.href = mailto;
+});
+
+// ---------- Page 2: ride-time & efficiency ----------
+const routeEls = {
+  routeLength: document.getElementById('routeLength'), routeWidth: document.getElementById('routeWidth'),
+  speed: document.getElementById('speed'), routeType: document.getElementById('routeType'),
+  routeReturn: document.getElementById('routeReturn'), loadtime: document.getElementById('loadtime'),
+  palletsMek: document.getElementById('palletsMek'),
+};
+
+function calcRideTime() {
+  const length = parseFloat(routeEls.routeLength.value);
+  const width = parseFloat(routeEls.routeWidth.value);
+  const speedKmh = parseFloat(routeEls.speed.value);
+  const type = routeEls.routeType.value;
+  const isReturn = routeEls.routeReturn.checked;
+  const loadTime = parseFloat(routeEls.loadtime.value);
+  const palletsMek = parseFloat(routeEls.palletsMek.value);
+
+  document.getElementById('v-routeLength').textContent = length + ' m';
+  document.getElementById('v-routeWidth').textContent = width + ' m';
+  document.getElementById('v-speed').textContent = speedKmh + ' km/u';
+  document.getElementById('v-loadtime').textContent = loadTime + ' sec';
+  document.getElementById('v-palletsMek').textContent = palletsMek;
+
+  let oneWay = type === 'diag' ? Math.sqrt(length * length + width * width) : (length + width);
+  const distance = isReturn ? oneWay * 2 : oneWay;
+  const speedMs = (speedKmh * 1000) / 3600;
+  const rideTimeSeconds = speedMs > 0 ? distance / speedMs : 0;
+
+  document.getElementById('m-distance').textContent = Math.round(distance) + ' m' + (isReturn ? ' (retour)' : '');
+  document.getElementById('m-ridetime').textContent = fmtTime(rideTimeSeconds);
+
+  const cycleStandard = rideTimeSeconds + loadTime * 1;
+  const cycleMek = rideTimeSeconds + loadTime * palletsMek;
+  const cycleMekPerPallet = cycleMek / palletsMek;
+
+  document.getElementById('m-cycleStandard').textContent = fmtTime(cycleStandard) + '/pallet';
+  document.getElementById('m-cycleMek').textContent = fmtTime(cycleMekPerPallet) + '/pallet';
+
+  let efficiencyPct = 0;
+  if (cycleStandard > 0) efficiencyPct = (1 - (cycleMekPerPallet / cycleStandard)) * 100;
+  efficiencyPct = Math.max(0, Math.min(95, efficiencyPct));
+  document.getElementById('m-effComputed').textContent = efficiencyPct.toFixed(1) + '%';
+
+  const effInput = document.getElementById('eff');
+  effInput.value = efficiencyPct.toFixed(1);
+  document.getElementById('v-eff').textContent = efficiencyPct.toFixed(1) + '%';
+  calc();
+}
+
+Object.values(routeEls).forEach(function(el) { el.addEventListener('input', calcRideTime); el.addEventListener('change', calcRideTime); });
+Object.values(els).forEach(function(el) { el.addEventListener('input', calc); });
+document.getElementById('useLeasePremium').addEventListener('change', calc);
+
+// ---------- Page 4: comparison + PDF export ----------
+function computeAll() {
+  const price = parseFloat(els.price.value);
+  const competitorPrice = parseFloat(els.competitorPrice.value);
+  const priceDiff = Math.max(price - competitorPrice, 0);
+
+  const wage = parseFloat(els.wage.value);
+  const eff = parseFloat(els.eff.value) / 100;
+  const usage = parseFloat(els.usage.value) / 100;
+  const hoursFactor = parseFloat(els.hours.value) / 8;
+  const annualSavings = wage * eff * usage * hoursFactor;
+  const monthlySavings = annualSavings / 12;
+
+  const term = parseFloat(els.term.value);
+  const rate = parseFloat(els.rate.value);
+  const competitorLease = parseFloat(els.competitorLease.value);
+  const useLeasePremium = document.getElementById('useLeasePremium').checked;
+  const leasePayment = monthlyLeasePayment(price, rate, term);
+  const leaseDiff = Math.max(leasePayment - competitorLease, 0);
+  const effectiveLeaseCost = useLeasePremium ? leaseDiff : leasePayment;
+  const netLease = monthlySavings - effectiveLeaseCost;
+
+  const termAas = parseFloat(els.termAas.value);
+  const fee = parseFloat(els.fee.value);
+  const netAas = monthlySavings - fee;
+
+  const paybackMonthsFull = monthlySavings > 0 ? price / monthlySavings : Infinity;
+  const paybackMonthsPremium = monthlySavings > 0 ? priceDiff / monthlySavings : Infinity;
+
+  return {
+    price: price, competitorPrice: competitorPrice, priceDiff: priceDiff,
+    monthlySavings: monthlySavings,
+    koop: { paybackMonthsFull: paybackMonthsFull, paybackMonthsPremium: paybackMonthsPremium, totalCost: price },
+    lease: { term: term, monthly: leasePayment, competitorLease: competitorLease, diff: leaseDiff, useLeasePremium: useLeasePremium, net: netLease, totalCost: leasePayment * term },
+    aas: { term: termAas, fee: fee, net: netAas, totalCost: fee * termAas },
+  };
+}
+
+function renderComparison() {
+  const d = computeAll();
+  const fmtPay = function(m) { return isFinite(m) ? Math.round(m) + ' mnd' : '—'; };
+  const rows = [
+    ['Type kosten', 'Eenmalige aanschaf', 'Maandelijkse leasetermijn', 'Maandelijks all-in tarief'],
+    ['Bedrag / maand', 'n.v.t. (eenmalig)', fmtEUR(d.lease.monthly), fmtEUR(d.aas.fee)],
+    ['Terugverdientijd (volledige aanschaf)', fmtPay(d.koop.paybackMonthsFull), '—', '—'],
+    ['Terugverdientijd (meerprijs t.o.v. concurrent)', fmtPay(d.koop.paybackMonthsPremium), '—', '—'],
+    ['Netto resultaat / mnd', '—', (d.lease.net > 0 ? 'Direct positief' : fmtEUR(d.lease.net) + '/mnd'), (d.aas.net > 0 ? 'Direct positief' : fmtEUR(d.aas.net) + '/mnd')],
+    ['Looptijd', 'n.v.t.', d.lease.term + ' mnd', d.aas.term + ' mnd'],
+    ['Totale kosten (looptijd)', fmtEUR(d.koop.totalCost), fmtEUR(d.lease.totalCost) + (d.lease.useLeasePremium ? ' (verschilbasis)' : ''), fmtEUR(d.aas.totalCost)],
+    ['Eigenaar na afloop', 'Ja, direct', 'Ja, na looptijd', 'Nee'],
+    ['Restwaarderisico bij', 'Klant', 'Meestal leasemaatschappij', 'MEK-Mover'],
+  ];
+  const tbody = document.getElementById('compareBody');
+  tbody.innerHTML = rows.map(function(r, i) {
+    return '<tr style="border-bottom:1px solid var(--border);' + (i === 0 ? 'font-weight:600;' : '') + '">' +
+      r.map(function(cell, ci) { return '<td style="padding:8px 10px;' + (ci === 0 ? 'color:var(--text-soft);' : '') + '">' + cell + '</td>'; }).join('') +
+      '</tr>';
+  }).join('');
+}
+
+// SVG-logo omzetten naar PNG (jsPDF kan geen SVG plaatsen)
+function logoToPng() {
+  return new Promise(function(resolve) {
+    try {
+      const img = new Image();
+      img.onload = function() {
+        try {
+          const c = document.createElement('canvas');
+          c.width = 984; c.height = 382;
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          resolve(c.toDataURL('image/png'));
+        } catch (e) { resolve(null); }
+      };
+      img.onerror = function() { resolve(null); };
+      img.src = document.querySelector('.brand-logo').src;
+    } catch (e) { resolve(null); }
+  });
+}
+
+// ---------- Offerte ----------
+document.getElementById('offer-qty').addEventListener('input', function() {
+  document.getElementById('v-offer-qty').textContent = this.value;
+});
+document.getElementById('offer-all-options').addEventListener('change', function() {
+  document.getElementById('offer-model-field').style.display = this.checked ? 'none' : 'block';
+});
+
+function buildOfferModel(key, d, qty, els) {
+  const vatRate = 0.21;
+  let desc, sub, unit, subtotal, suffix = '', extraTotalLabel = null, extraTotalVal = null;
+  if (key === 'koop') {
+    desc = 'MEK-Mover EPT — Koop';
+    sub = 'Elektrische pallettruck met uitschuifbare vorklepels (1 of 2 pallets per rit). De truck is eigendom van de klant.';
+    unit = d.price; subtotal = d.price * qty;
+  } else if (key === 'lease') {
+    const rate = parseFloat(els.rate.value);
+    desc = 'MEK-Mover EPT — Lease';
+    sub = 'Looptijd ' + d.lease.term + ' mnd, rente ' + rate + '%/jr, aanschafwaarde ' + fmtEUR(d.price) + ' per truck.';
+    unit = d.lease.monthly; subtotal = d.lease.monthly * qty; suffix = ' /mnd';
+    extraTotalLabel = 'Totaal over ' + d.lease.term + ' mnd (excl. BTW)';
+    extraTotalVal = subtotal * d.lease.term;
+  } else {
+    desc = 'MEK-Mover EPT — As a Service';
+    sub = 'All-in ontzorgpakket, onderhoud en service inbegrepen. Contractduur ' + d.aas.term + ' mnd. Truck blijft eigendom van MEK-Mover.';
+    unit = d.aas.fee; subtotal = d.aas.fee * qty; suffix = ' /mnd';
+    extraTotalLabel = 'Totaal over ' + d.aas.term + ' mnd (excl. BTW)';
+    extraTotalVal = subtotal * d.aas.term;
+  }
+  const vat = subtotal * vatRate;
+  const savingsMonth = d.monthlySavings * qty;
+  const fmtPay = function(m) { return isFinite(m) ? Math.round(m) + ' mnd' : '-'; };
+  const benefit = [];
+  if (key === 'koop') {
+    benefit.push(['Terugverdiend (volledige aanschaf)', fmtPay(d.koop.paybackMonthsFull)]);
+    benefit.push(['Terugverdiend (meerprijs t.o.v. ' + fmtEUR(d.competitorPrice) + ')', fmtPay(d.koop.paybackMonthsPremium)]);
+  } else {
+    benefit.push(['Netto voordeel per maand (excl. BTW)', fmtEUR(savingsMonth - subtotal)]);
+  }
+  return { key: key, label: key === 'koop' ? 'Koop' : (key === 'lease' ? 'Lease' : 'As a Service'), desc: desc, sub: sub, unit: unit, subtotal: subtotal, suffix: suffix, vat: vat, extraTotalLabel: extraTotalLabel, extraTotalVal: extraTotalVal, savingsMonth: savingsMonth, benefit: benefit };
+}
+
+document.getElementById('offer-pdf').addEventListener('click', async function() {
+  const statusEl = document.getElementById('offer-status');
+  try {
+    const d = computeAll();
+    const allOptions = document.getElementById('offer-all-options').checked;
+    const model = document.getElementById('offer-model').value;
+    const qty = parseInt(document.getElementById('offer-qty').value, 10);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+    const now = new Date();
+    const valid = new Date(now.getTime() + 30 * 86400000);
+    const fmtDate = function(dt) { return dt.toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' }); };
+    const pad = function(n) { return String(n).padStart(2, '0'); };
+    const offerNr = 'MEK-' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + '-' + pad(now.getHours()) + pad(now.getMinutes());
+    const eur2 = function(n) { return '€ ' + n.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+    const NAVY = [14, 32, 56], RED = [214, 72, 61], INK = [30, 36, 48], GREY = [110, 120, 135], LINE = [220, 224, 230];
+
+    // Header
+    doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.rect(0, 0, 210, 44, 'F');
+    doc.setFillColor(RED[0], RED[1], RED[2]);
+    doc.rect(0, 44, 210, 1.2, 'F');
+    const logo = await logoToPng();
+    if (logo) doc.addImage(logo, 'PNG', 15, 11, 46, 17.9);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(24); doc.setTextColor(255, 255, 255);
+    doc.text('OFFERTE', 195, 20, { align: 'right' });
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(147, 166, 191);
+    doc.text('Offertenummer: ' + offerNr, 195, 28, { align: 'right' });
+    doc.text('Datum: ' + fmtDate(now), 195, 33, { align: 'right' });
+    doc.text('Geldig tot: ' + fmtDate(valid), 195, 38, { align: 'right' });
+
+    // Klant / afzender
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(RED[0], RED[1], RED[2]);
+    doc.text('OFFERTE VOOR', 15, 58);
+    doc.text('OFFERTE VAN', 120, 58);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(INK[0], INK[1], INK[2]);
+    let cy = 64;
+    if (leadData.name) { doc.text(leadData.name, 15, cy); cy += 5; }
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    if (leadData.company) { doc.text(leadData.company, 15, cy); cy += 5; }
+    if (leadData.email) { doc.text(leadData.email, 15, cy); cy += 5; }
+    if (leadData.phone) { doc.text(leadData.phone, 15, cy); cy += 5; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5);
+    doc.text('MEK-Mover', 120, 64);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+    doc.text('info@mek-mover.nl', 120, 69);
+    doc.text('www.mek-mover.nl', 120, 74);
+
+    // Efficiëntiewinst (samen met contactgegevens-blok tonen)
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+    doc.text('Berekende efficiëntiewinst: ' + document.getElementById('v-eff').textContent, 15, 82);
+
+    let y = 92;
+    const savingsMonthTotal = d.monthlySavings * qty;
+    const models = allOptions ? ['koop', 'lease', 'aas'] : [model];
+    const offers = models.map(function(k) { return buildOfferModel(k, d, qty, els); });
+
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.text(allOptions ? 'Aanbieding — 3 opties' : 'Aanbieding', 15, y);
+    y += 8;
+
+    if (!allOptions) {
+      // Enkele optie: brede rij zoals voorheen
+      const o = offers[0];
+      doc.setFillColor(240, 243, 247);
+      doc.rect(15, y - 5.3, 180, 8, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+      doc.text('Omschrijving', 17, y); doc.text('Aantal', 124, y, { align: 'right' });
+      doc.text('Prijs per stuk', 158, y, { align: 'right' }); doc.text('Totaal', 193, y, { align: 'right' });
+      y += 10;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(INK[0], INK[1], INK[2]);
+      doc.text(o.desc, 17, y);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5);
+      doc.text(String(qty), 124, y, { align: 'right' });
+      doc.text(eur2(o.unit) + o.suffix, 158, y, { align: 'right' });
+      doc.text(eur2(o.subtotal) + o.suffix, 193, y, { align: 'right' });
+      doc.setFontSize(8); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+      const subLines = doc.splitTextToSize(o.sub, 160);
+      doc.text(subLines, 17, y + 4.6);
+      y += 4.6 * subLines.length + 6;
+      doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.line(15, y, 195, y); y += 8;
+
+      const totLine = function(label, val, bold) {
+        doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(bold ? 10.5 : 9.5);
+        doc.setTextColor(INK[0], INK[1], INK[2]);
+        doc.text(label, 130, y); doc.text(val, 193, y, { align: 'right' });
+        y += bold ? 7 : 6;
+      };
+      totLine('Subtotaal (excl. BTW)' + (o.suffix ? ' per maand' : ''), eur2(o.subtotal), false);
+      totLine('BTW 21%', eur2(o.vat), false);
+      totLine('Totaal (incl. BTW)' + (o.suffix ? ' per maand' : ''), eur2(o.subtotal + o.vat), true);
+      if (o.extraTotalLabel) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+        doc.text(o.extraTotalLabel + ': ' + eur2(o.extraTotalVal), 193, y, { align: 'right' });
+        y += 5;
+      }
+
+      y += 6;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+      doc.text('Uw voordeel (indicatief)', 15, y); y += 3;
+      doc.setDrawColor(RED[0], RED[1], RED[2]); doc.setLineWidth(0.6); doc.line(15, y, 30, y); doc.setLineWidth(0.2); y += 7;
+      doc.setFontSize(9.5);
+      [['Verwachte besparing per maand' + (qty > 1 ? ' (' + qty + ' trucks)' : ''), eur2(savingsMonthTotal)]].concat(o.benefit).forEach(function(r) {
+        doc.setFont('helvetica', 'normal'); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+        doc.text(r[0], 15, y);
+        doc.setFont('helvetica', 'bold'); doc.setTextColor(INK[0], INK[1], INK[2]);
+        doc.text(r[1], 193, y, { align: 'right' });
+        y += 6.5;
+      });
+      y += 2;
+    } else {
+      // Drie opties naast elkaar
+      const colW = 58, gap = 3, x0 = 15;
+      const colX = [x0, x0 + colW + gap, x0 + 2 * (colW + gap)];
+      const topY = y;
+      let maxBottom = topY;
+      offers.forEach(function(o, i) {
+        const x = colX[i]; let cy = topY;
+        doc.setFillColor(i === 0 ? 240 : 246, i === 0 ? 243 : 247, i === 0 ? 247 : 250);
+        doc.roundedRect(x, cy, colW, 8, 1, 1, 'F');
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(RED[0], RED[1], RED[2]);
+        doc.text(o.label, x + 3, cy + 5.5);
+        cy += 13;
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7.3); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+        const subLines = doc.splitTextToSize(o.sub, colW - 4);
+        doc.text(subLines, x + 3, cy);
+        cy += 3.6 * subLines.length + 4;
+        doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.line(x, cy, x + colW, cy); cy += 5;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(12.5); doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+        doc.text(eur2(o.unit) + o.suffix, x + 3, cy);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+        doc.text('per stuk, excl. BTW', x + 3, cy + 3.6);
+        cy += 9;
+        if (qty > 1) {
+          doc.setFontSize(7.3); doc.text('Totaal (' + qty + 'x, excl. BTW): ' + eur2(o.subtotal) + o.suffix, x + 3, cy);
+          cy += 4.5;
+        }
+        doc.setFontSize(7.3); doc.text('Incl. BTW: ' + eur2(o.subtotal + o.vat) + o.suffix, x + 3, cy); cy += 4.5;
+        if (o.extraTotalLabel) {
+          const lbl = doc.splitTextToSize(o.extraTotalLabel + ': ' + eur2(o.extraTotalVal), colW - 4);
+          doc.text(lbl, x + 3, cy); cy += 3.6 * lbl.length;
+        }
+        cy += 3;
+        doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.line(x, cy, x + colW, cy); cy += 5;
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+        doc.text('Uw voordeel', x + 3, cy); cy += 4.5;
+        doc.setFontSize(7);
+        o.benefit.forEach(function(r) {
+          doc.setFont('helvetica', 'normal'); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+          const lbl = doc.splitTextToSize(r[0], colW - 4);
+          doc.text(lbl, x + 3, cy); cy += 3.4 * lbl.length;
+          doc.setFont('helvetica', 'bold'); doc.setTextColor(INK[0], INK[1], INK[2]);
+          doc.text(r[1], x + 3, cy); cy += 4.6;
+        });
+        doc.setDrawColor(LINE[0], LINE[1], LINE[2]);
+        doc.roundedRect(x, topY, colW, cy - topY, 1, 1, 'S');
+        maxBottom = Math.max(maxBottom, cy);
+      });
+      y = maxBottom + 6;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+      doc.text('Verwachte besparing door efficiëntiewinst: ' + eur2(savingsMonthTotal) + ' per maand' + (qty > 1 ? ' (' + qty + ' trucks)' : '') + '.', 15, y);
+      y += 6;
+    }
+
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+    const assump = doc.splitTextToSize('Uitgangspunten: jaarkosten medewerker ' + fmtEUR(parseFloat(els.wage.value)) + ', inzet op pallettransport ' + els.usage.value + '%, ' + els.hours.value + ' bedrijfsuren per dag per truck. De efficiëntiewinst is berekend op basis van rijtijd en laad-/lostijd (zie Mek-Rider).', 180);
+    doc.text(assump, 15, y);
+    y += 4 * assump.length + 6;
+
+    // Voorwaarden
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.text('Voorwaarden', 15, y); y += 5;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+    ['Deze offerte is geldig tot ' + fmtDate(valid) + '.',
+     'Alle prijzen zijn exclusief BTW, tenzij anders vermeld.',
+     'Besparingen en terugverdientijden zijn indicatief en afhankelijk van de genoemde uitgangspunten.',
+     'Levertijd en betalingsvoorwaarden in overleg.'].forEach(function(t) { doc.text('•  ' + t, 15, y); y += 4.5; });
+
+    // Akkoord
+    let sy = Math.max(y + 8, 236);
+    if (sy > 268) { doc.addPage(); sy = 30; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
+    doc.text('Akkoord klant', 15, sy);
+    doc.setDrawColor(LINE[0], LINE[1], LINE[2]);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+    doc.line(15, sy + 16, 80, sy + 16); doc.text('Naam', 15, sy + 20);
+    doc.line(90, sy + 16, 130, sy + 16); doc.text('Datum', 90, sy + 20);
+    doc.line(140, sy + 16, 195, sy + 16); doc.text('Handtekening', 140, sy + 20);
+
+    // Footer
+    doc.setDrawColor(LINE[0], LINE[1], LINE[2]);
+    doc.line(15, 284, 195, 284);
+    doc.setFontSize(8); doc.setTextColor(GREY[0], GREY[1], GREY[2]);
+    doc.text('MEK-Mover  ·  info@mek-mover.nl  ·  www.mek-mover.nl', 105, 289, { align: 'center' });
+
+    doc.save('offerte-' + offerNr + '.pdf');
+    statusEl.textContent = 'Offerte ' + offerNr + ' gedownload.';
+    statusEl.classList.add('success');
+  } catch (err) {
+    statusEl.textContent = 'Offerte genereren mislukt. Probeer het opnieuw.';
+    statusEl.classList.remove('success');
+  }
+});
+
+document.getElementById('pdf-download').addEventListener('click', async function() {
+  const statusEl = document.getElementById('pdf-status');
+  try {
+    const d = computeAll();
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const today = new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    doc.setFillColor(14, 32, 56);
+    doc.rect(0, 0, 210, 36, 'F');
+    const logo = await logoToPng();
+    if (logo) doc.addImage(logo, 'PNG', 15, 9, 40, 15.5);
+
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text('Mek-Rider — Vergelijkingsoverzicht', 62, 17);
+    doc.setFontSize(10);
+    doc.setTextColor(147, 166, 191);
+    doc.text('Datum: ' + today, 62, 24);
+
+    let y = 42;
+    doc.setTextColor(20, 20, 20);
+    doc.setFontSize(11);
+    doc.text('Contactgegevens', 15, y); y += 6;
+    doc.setFontSize(9);
+    doc.text('Naam: ' + (leadData.name || '-'), 15, y); y += 5;
+    doc.text('Bedrijf: ' + (leadData.company || '-'), 15, y); y += 5;
+    doc.text('E-mail: ' + (leadData.email || '-'), 15, y); y += 5;
+    doc.text('Telefoon: ' + (leadData.phone || '-'), 15, y); y += 10;
+
+    doc.setFontSize(11);
+    doc.text('Uitgangspunten', 15, y); y += 6;
+    doc.setFontSize(9);
+    doc.text('Aanschafwaarde EPT: ' + fmtEUR(d.price), 15, y); y += 5;
+    doc.text('Prijs concurrerende EPT: ' + fmtEUR(d.competitorPrice), 15, y); y += 5;
+    doc.text('Prijsverschil met concurrent: ' + fmtEUR(d.priceDiff), 15, y); y += 5;
+    doc.text('Efficiëntiewinst (berekend): ' + document.getElementById('v-eff').textContent, 15, y); y += 5;
+    doc.text('Besparing per maand: ' + fmtEUR(d.monthlySavings), 15, y); y += 10;
+
+    doc.setFontSize(11);
+    doc.text('Vergelijking', 15, y); y += 8;
+
+    const fmtPay = function(m) { return isFinite(m) ? Math.round(m) + ' mnd' : '-'; };
+    const rows = [
+      ['', 'Koop', 'Lease', 'As a Service'],
+      ['Bedrag / maand', 'n.v.t.', fmtEUR(d.lease.monthly), fmtEUR(d.aas.fee)],
+      ['Terugverdiend (volledig)', fmtPay(d.koop.paybackMonthsFull), '-', '-'],
+      ['Terugverdiend (meerprijs)', fmtPay(d.koop.paybackMonthsPremium), '-', '-'],
+      ['Netto resultaat / mnd', '-', (d.lease.net > 0 ? 'Direct positief' : fmtEUR(d.lease.net) + '/mnd'), (d.aas.net > 0 ? 'Direct positief' : fmtEUR(d.aas.net) + '/mnd')],
+      ['Looptijd', 'n.v.t.', d.lease.term + ' mnd', d.aas.term + ' mnd'],
+      ['Totale kosten', fmtEUR(d.koop.totalCost), fmtEUR(d.lease.totalCost), fmtEUR(d.aas.totalCost)],
+      ['Eigenaar na afloop', 'Ja, direct', 'Ja, na looptijd', 'Nee'],
+    ];
+    const colX = [15, 75, 115, 155];
+    doc.setFontSize(9);
+    rows.forEach(function(r, ri) {
+      if (ri === 0) doc.setFont(undefined, 'bold'); else doc.setFont(undefined, 'normal');
+      r.forEach(function(cell, ci) { doc.text(String(cell), colX[ci], y); });
+      y += 7;
+    });
+
+    y += 8;
+    doc.setFontSize(8);
+    doc.setTextColor(140, 140, 140);
+    doc.text('Indicatieve berekening — Mek-Rider, MEK-Mover.', 15, y);
+
+    const fileDate = new Date().toISOString().slice(0, 10);
+    doc.save('mek-rider-vergelijking-' + fileDate + '.pdf');
+
+    statusEl.textContent = 'PDF gedownload.';
+    statusEl.classList.add('success');
+  } catch (err) {
+    statusEl.textContent = 'PDF-export mislukt. Probeer het opnieuw.';
+    statusEl.classList.remove('success');
+  }
+});
+
+calcRideTime();
+showPage(1);
+</script>
+</body>
+</html>

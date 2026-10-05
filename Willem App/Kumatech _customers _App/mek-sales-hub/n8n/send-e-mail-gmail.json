@@ -1,0 +1,143 @@
+{
+  "id": "mekSendEmail0001",
+  "name": "MEK · Send e-mail (Gmail)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000046",
+      "name": "Webhook: send email",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mek-send-email",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "00000000-0000-4000-8000-000000000045",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mekInboundAuth01",
+          "name": "MEK app → n8n (x-mek-secret)"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000047",
+      "name": "Gmail: send",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "sendTo": "={{ $json.body.to }}",
+        "subject": "={{ $json.body.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body.body }}",
+        "options": {
+          "replyTo": "={{ $json.body.replyTo || \"\" }}",
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "mekGmailOAuth001",
+          "name": "Gmail (afzender)"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000048",
+      "name": "Respond: sent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        220
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: true, messageId: $json.id }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000049",
+      "name": "Respond: failed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        400
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ ok: false, error: String($json.error?.message || $json.error || \"send failed\") }) }}",
+        "options": {
+          "responseCode": 500
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000051",
+      "name": "Note 0050",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "content": "## Send e-mail (optional)\nOnly for e-mails a salesperson approved in the app. Connect a Gmail OAuth2 credential to **Gmail: send**, then publish this workflow and set `N8N_SEND_EMAIL_WEBHOOK_URL` in the app.\nSwitch it on only after the legal check (AVG / cold e-mail, spec B.12).",
+        "width": 520,
+        "height": 220
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: send email": {
+      "main": [
+        [
+          {
+            "node": "Gmail: send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: send": {
+      "main": [
+        [
+          {
+            "node": "Respond: sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "timezone": "Europe/Amsterdam"
+  },
+  "pinData": {}
+}

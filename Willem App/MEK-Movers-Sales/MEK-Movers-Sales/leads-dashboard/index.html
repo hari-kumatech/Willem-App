@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mek-Rider leads dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e2038; --card: #142c4a; --card-2: #1a3558; --text: #f4f6f8; --text-soft: #93a6bf;
+    --accent: #d6483d; --accent-soft: rgba(214,72,61,0.14); --border: rgba(147,166,191,0.22);
+    --c-pro: #a9b7c9; --c-ben: #c39be0; --c-int: #7fb2e5; --c-off: #e8b04a; --c-won: #5fb885; --c-lost: #d6483d;
+    --k-a: #5fb885; --k-b: #e8b04a; --k-c: #93a6bf;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0e2038; --card: #142c4a; --text: #f4f6f8; } }
+  :root[data-theme="dark"] { --bg: #0e2038; --card: #142c4a; --text: #f4f6f8; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 60px; }
+  header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
+  .logo { height: 38px; display: block; margin-bottom: 14px; }
+  h1 { font-family: 'Oswald', -apple-system, sans-serif; font-weight: 700; font-style: italic; text-transform: uppercase; transform: skewX(-6deg); transform-origin: left; display: inline-block; font-size: 1.8rem; margin: 0; line-height: 1.1; }
+  .sub { color: var(--text-soft); font-size: 0.9rem; margin: 4px 0 0; }
+  .hbtns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 10px 18px; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn.ghost { background: transparent; color: var(--text-soft); border: 1px solid var(--border); }
+  .btn.danger { background: transparent; color: var(--accent); border: 1px solid rgba(214,72,61,0.5); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn:focus-visible, .kpi:focus-visible, .chip:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, .icon:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .sect { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 0.95rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.05em; margin: 4px 0 10px; }
+  .kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 980px) { .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi { text-align: left; font-family: inherit; color: inherit; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px 14px 18px; cursor: pointer; position: relative; overflow: hidden; }
+  .kpi::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
+  .kpi.active { border-color: var(--c); background: var(--card-2); }
+  .kpi .lbl { font-size: 0.74rem; color: var(--text-soft); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .kpi .num { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 2rem; line-height: 1.1; margin-top: 4px; }
+  .kpi .eur { font-size: 0.92rem; font-weight: 600; color: var(--c); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .kpi .eur.soft { color: var(--text-soft); font-weight: 500; }
+  .summary { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 820px) { .summary { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; }
+  .card .lbl { font-size: 0.8rem; color: var(--text-soft); }
+  .card .big { font-family: 'Oswald', sans-serif; font-size: 1.5rem; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: rgba(147,166,191,0.15); margin-top: 12px; }
+  .bar div { height: 100%; transition: width .3s; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.76rem; color: var(--text-soft); margin-top: 8px; }
+  .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--c); margin-right: 5px; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar h2 { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 1.1rem; margin: 0 auto 0 0; }
+  .search, .sel { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 9px 12px; font-size: 0.88rem; font-family: inherit; }
+  .search { width: 220px; }
+  .chip { border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; font-size: 0.8rem; color: var(--text-soft); background: transparent; cursor: pointer; font-family: inherit; font-weight: 600; }
+  .chip.on { border-color: var(--c); color: var(--text); background: var(--card-2); }
+  .clear { font-size: 0.8rem; color: var(--text-soft); }
+  .clear button { background: none; border: none; color: var(--accent); cursor: pointer; font-weight: 600; font-family: inherit; }
+  .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 1000px; }
+  th { text-align: left; color: var(--text-soft); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+  th.num, td.num { text-align: right; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td .co { font-weight: 600; }
+  td .ct { color: var(--text-soft); font-size: 0.78rem; margin-top: 2px; line-height: 1.35; }
+  td a { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--text-soft); }
+  td.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+  td.dt { white-space: nowrap; }
+  .li { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .li a { border: 1px solid rgba(10,102,194,0.6); border-bottom: 1px solid rgba(10,102,194,0.6); color: #8cc2f5; border-radius: 999px; padding: 3px 9px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+  .li a:hover { background: rgba(10,102,194,0.18); }
+  .li a.g { border-color: var(--border); color: var(--text-soft); }
+  .fam { display: inline-block; margin-left: 6px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #e8b04a; border: 1px solid rgba(232,176,74,0.5); border-radius: 4px; padding: 1px 5px; vertical-align: middle; }
+  .kans { display: inline-block; min-width: 28px; text-align: center; border-radius: 6px; padding: 3px 8px; font-weight: 700; font-family: 'Oswald', sans-serif; font-size: 0.95rem; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); }
+  .st { appearance: none; -webkit-appearance: none; border: 1px solid var(--c); color: var(--c); background: transparent; border-radius: 999px; padding: 4px 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .st option { background: var(--card); color: var(--text); }
+  .icon { background: none; border: none; color: var(--text-soft); cursor: pointer; padding: 6px; border-radius: 6px; font-size: 0.82rem; font-family: inherit; }
+  .icon:hover { color: var(--text); background: rgba(147,166,191,0.12); }
+  .empty { text-align: center; padding: 44px 20px; color: var(--text-soft); }
+  .empty b { display: block; color: var(--text); font-size: 1rem; margin-bottom: 6px; }
+  .banner { background: var(--accent-soft); border: 1px solid rgba(214,72,61,0.4); border-radius: 10px; padding: 10px 14px; font-size: 0.85rem; margin-bottom: 16px; display: none; }
+  .banner.ok { background: rgba(95,184,133,0.14); border-color: rgba(95,184,133,0.45); }
+  dialog { background: var(--card); color: var(--text); border: 1px solid var(--border); border-radius: 16px; padding: 0; width: min(680px, calc(100vw - 24px)); max-height: calc(100vh - 40px); }
+  dialog::backdrop { background: rgba(5,12,24,0.7); }
+  .dlg { padding: 22px 22px 18px; }
+  .dlg h3 { font-family: 'Oswald', sans-serif; font-size: 1.25rem; margin: 0 0 14px; }
+  .fgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 14px; }
+  .fgrid .w2 { grid-column: span 2; } .fgrid .full { grid-column: 1 / -1; }
+  @media (max-width: 600px) { .fgrid { grid-template-columns: 1fr; } .fgrid .w2 { grid-column: auto; } }
+  .fsect { grid-column: 1 / -1; font-size: 0.72rem; color: var(--text-soft); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-top: 6px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .f label { display: block; font-size: 0.78rem; color: var(--text-soft); margin-bottom: 5px; }
+  .f input, .f select, .f textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 9px; padding: 9px 11px; font-size: 0.9rem; font-family: inherit; }
+  .f textarea { min-height: 60px; resize: vertical; }
+  .hint { font-size: 0.72rem; color: var(--text-soft); margin-top: 4px; }
+  .dlg-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
+  .dlg-actions .spacer { flex: 1; }
+  .err { color: var(--accent); font-size: 0.8rem; margin-top: 8px; min-height: 1em; }
+  footer { font-size: 0.75rem; color: var(--text-soft); margin-top: 16px; line-height: 1.5; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTUVLIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDI0Ni4zMiA5NS42MSI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjUuMSwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDMpICAtLT4KICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLnN0MCB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLnN0MSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIyNDEuMzIgNzMuOTcgMTIzLjk4IDczLjk3IDEyMy45OCA3MC45OSAyMzkuNDcgNzAuOTkgMjQxLjMyIDczLjk3Ii8+CiAgPHJlY3QgY2xhc3M9InN0MSIgeD0iLjU3IiB5PSI3MC45OSIgd2lkdGg9IjEyMy4zNyIgaGVpZ2h0PSIyLjk3Ii8+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSI3MS4zNCA5NS4yOSA2OC4xIDk1LjMzIDY5LjIzIDg5LjU5IDYyLjkzIDg5LjU5IDYxLjc1IDk1LjMxIDU4LjQ3IDk1LjMyIDYxLjMgODEuNTIgNjQuNTkgODEuNTIgNjMuNDkgODYuODMgNjkuNzUgODYuODMgNzAuODYgODEuNTIgNzQuMTEgODEuNTEgNzEuMzQgOTUuMjkiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTA5LjI5LDgxLjU1bDMuMjctLjAyLTEuNzksOC43MWMtLjksNC4zOS01LjEsNi4xOC05LjQsNC45Ny0yLjI0LS42My0zLjYxLTIuODEtMy4xNi01LjEybDEuNjctOC41OCwzLjI2LjAyLTEuNjQsOC40M2MtLjMxLDEuNTcuODQsMi43NSwyLjM3LDIuODMsMS44Ny4wOSwzLjMyLS45OCwzLjctMi44NGwxLjcxLTguNDFaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTUwLjI4LDkyLjY5YzEuODYuMzcsMy42Ni0uMTgsNC44Ni0xLjYxbDEuOTksMS45NWMtMi4wOSwyLjU4LTYuMzEsMy4xNi05LjE1LDIuMDMtMi4wMi0uOC0zLjQzLTIuNTctMy42NC00Ljc1LS4yNC0yLjQzLjUzLTQuODUsMi4yNi02LjU5LDMuMDgtMy4xMSw5LjA4LTMuNTEsMTEuNzgtLjA4bC0yLjQxLDEuOTVjLTEuNjItMi4xMy00LjY1LTEuOTktNi41My0uNDYtMS4xOC45Ni0xLjgsMi40OS0xLjg0LDQuMTItLjAzLDEuNjkuOTEsMy4wOCwyLjY4LDMuNDNaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTE0MS41NSw4OC4wM2MuMTkuNDgtLjA0LDEuMDMtLjIsMS41OWgtNi43NXMtMS4xNSw1LjY5LTEuMTUsNS42OWgtMS44NnMyLjc1LTEzLjc5LDIuNzUtMTMuNzloOS40NXMtLjI3LDEuNTgtLjI3LDEuNThsLTcuNTkuMDItLjk2LDQuODloNi42WiIvPgogIDxwb2x5Z29uIGNsYXNzPSJzdDAiIHBvaW50cz0iMTE5LjIyIDk1LjMxIDExNS45NiA5NS4zMiAxMTguMjEgODQuMTMgMTEzLjczIDg0LjA5IDExNC4yNiA4MS41IDEyNi40MyA4MS41MSAxMjUuOTcgODQuMSAxMjEuNTIgODQuMSAxMTkuMjIgOTUuMzEiLz4KICA8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjI1Ljc2IDg5LjUxIDE5LjI0IDg5LjUzIDE4LjU5IDkyLjc0IDI2LjM0IDkyLjc0IDI1LjggOTUuMzMgMTQuOCA5NS4zMyAxNy42MSA4MS41IDI4LjE2IDgxLjUxIDI3LjY2IDg0LjA0IDIwLjM0IDg0LjA2IDE5Ljc1IDg3IDI2LjIxIDg3LjAyIDI1Ljc2IDg5LjUxIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTM4Ljg3LDgxLjUyaC0zLjVzLTguNywxMy43OS04LjcsMTMuNzloMy40MnMxLjgxLTIuOTMsMS44MS0yLjkzbDYuNTcuMDMuNjcsMi45MmgzLjI5cy0zLjU1LTEzLjgxLTMuNTUtMTMuODFaTTMzLjM4LDg5Ljg4bDMuMjYtNS40MSwxLjI0LDUuMzQtNC40OS4wOFoiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTMuNTEsODMuNTVjLS45Mi0xLjI5LTIuMzQtMi0zLjk0LTJsLTYuNzQtLjAzLTIuODIsMTMuODFoMy4yNXMuODMtNC4wMS44My00LjAxaDIuNzdzMi4yNCw0LjA1LDIuMjQsNC4wNWwzLjM0LS4wOC0yLjMtNC4zN2MzLjIyLS45Myw0LjczLTQuNDQsMy4zNy03LjM1Wk0xMC4zNCw4Ny40NWMtLjM2LjYtMS4xOSwxLjE4LTIuMDUsMS4yMWwtMy42Ni4wOS45My00LjY1LDMuMTkuMDVjLjYyLDAsMS4zNC4yNiwxLjY5Ljg3LjQ1Ljc4LjMzLDEuNy0uMSwyLjQ0WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0xNzIuMDEsODMuNDNjLS43Ni0xLjE2LTEuOTctMS44NS0zLjM5LTEuODZsLTYuMDItLjA0LTIuNzksMTMuNzdoMS44OHMuOS00LjQxLjktNC40MWg0LjAyczIuMjcsNC40MSwyLjI3LDQuNDFjLjc1LjAyLDEuMzQuMDgsMS45NC0uMDZsLTIuMzYtNC42M2MzLjI3LS43NCw0LjkxLTQuMiwzLjU0LTcuMTlaTTE3MC4wNiw4Ny41OWMtLjQ5Ljg0LTEuNTgsMS42Mi0yLjc2LDEuNjRsLTQuMzMuMDQsMS4yMS02LjE1LDMuODEuMDNjLjgxLDAsMS43OC4zNiwyLjI1LDEuMTMuNjQsMS4wNi40MiwyLjI5LS4xOCwzLjMxWiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0yMjUuNzksODMuMzdjLS42OS0xLjE4LTIuMDktMS43OS0zLjQzLTEuOGwtNS45Mi0uMDQtMi43OCwxMy43OCwxLjg5LS4wNC45LTQuMzdoMy45NXMyLjMyLDQuNDMsMi4zMiw0LjQzbDEuOTktLjAyLTIuNDYtNC42M2MxLjYtLjQzLDIuODgtMS40NSwzLjQ5LTIuNjguNzUtMS41Mi44Ny0zLjI1LjA2LTQuNjNaTTIyMy44Nyw4Ny42OGMtLjUzLjgyLTEuNTQsMS41My0yLjY4LDEuNTVsLTQuNDMuMDYsMS4yLTYuMTRoMy41OGMuOTgtLjAyLDIuMDguMzEsMi42LDEuMjkuNTYsMS4wNi4zMiwyLjMxLS4yOCwzLjI0WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik05Ni4xMyw4Ni4wMmMtLjMyLTEuODYtMS40Ni0zLjM0LTMuMi00LjA3LTMuMjItMS4zNS03LjA3LS43Ny05LjYsMS42OC0xLjc4LDEuNzItMi41NCw0LjE5LTIuMzIsNi42Mi4yMSwyLjM5LDEuODQsNC4yNyw0LjE0LDQuOTQsMS45Ni41Nyw0LjA4LjU0LDYuMDktLjI5LDMuNTYtMS40Niw1LjUzLTUuMTksNC44OS04Ljg5Wk05Mi45MSw4OC4xOWMtLjIxLDEuNjktMS4wOSwzLjA5LTIuMzIsMy44NS0xLjQ1Ljg5LTMuMjEsMS4wMy00LjcuMjctMS4yOC0uNjYtMS43Mi0yLjA2LTEuNjQtMy40NC4xMS0xLjY5LjkzLTMuMiwyLjIxLTQuMDUsMS40OS0uOTgsMy4zOC0xLjE1LDQuOTEtLjMsMS4yOS43MSwxLjcyLDIuMTcsMS41MywzLjY4WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0yMTIuMTYsODYuNjNjLS4xOC0yLjM4LTEuNTUtNC4zNC0zLjg5LTQuOTctMi4xOC0uNTktNC41NS0uNC02LjU0LjgtMy4wNSwxLjg0LTQuNTEsNS41MS0zLjcsOC45NS4zMywxLjQxLDEuMjIsMi41OSwyLjU3LDMuMjgsMi42OCwxLjM3LDUuODksMS4wMyw4LjI3LS42OCwyLjI5LTEuNjQsMy41MS00LjQzLDMuMjktNy4zOFpNMjA4LjU1LDkxLjk2Yy0xLjY4LDEuNzktNC4yNCwyLjI4LTYuNDMsMS40Ny0yLjg3LTEuMDctMi45My00Ljg5LTEuNTMtNy4zOCwxLjQxLTIuNTEsNC4zMS0zLjY3LDcuMDUtMi43OCwxLjM3LjQ1LDIuMzYsMS41OCwyLjU4LDMuMDIuMzEsMi4wMi0uMjEsNC4xLTEuNjgsNS42N1oiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTkxLjc5LDk1LjMybDItMTAuMjctNi4zMSw4LjI2Yy0uMTMuNDUtMS4wMy42MS0xLjIuMThsLTMuMjktOC41OC0yLjExLDEwLjM5aC0xLjgxczIuNzctMTMuNzYsMi43Ny0xMy43NmwxLjY0LS4wMywzLjcsOS43OCw3LjI5LTkuNzRjLjYxLS4wOSwxLjE0LS4wOSwxLjg0LDBsLTIuNzMsMTMuNzItMS43OS4wMloiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjM3LjU2LDg5LjA1bC02LjguMDMtLjkxLDQuNThoNy45M3MtLjMzLDEuNjctLjMzLDEuNjdoLTkuODJzMi44MS0xMy44LDIuODEtMTMuOGg5LjM5YzAsLjU3LS4xMywxLjAzLS4yOSwxLjU4aC03LjVzLS44Nyw0LjMtLjg3LDQuM2w2LjY4LjA0LS4yOCwxLjZaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTE1OC4xNiw4NS42MWMtLjM0LTEuNjgtMS40Ni0zLjA2LTMuMDYtMy43LTMuNDUtMS4zOC03LjQ3LS4yOC05LjYxLDIuNzgtMi4yNCwzLjE4LTIuMjIsOC40NiwxLjQ4LDEwLjE0LDIuNTcsMS4xNyw1LjY4LjksOC4wNS0uODUsMi42Ni0xLjk3LDMuNzYtNS4yMywzLjEzLTguMzdaTTE1Ni4zNiw4OC41NWMtLjU5LDMuNjEtMy43Nyw1Ljc5LTcuMjQsNS4xMy0yLjE0LS40LTMuMzMtMi4xMS0zLjI2LTQuMjcuMS0zLjExLDIuMDYtNS44OCw1LjE5LTYuMzcsMS43LS4yNywzLjQ3LjE1LDQuNTQsMS41Ljg4LDEuMTIsMSwyLjU2Ljc3LDRaIi8+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIxLjMxIDYzLjUzIDE1LjIzIC4wMiAzNS40OCAuMDIgNDkuMzYgMzEuNzEgNzYuNyAuMDYgOTcuNjUgLjA2IDg0LjE5IDYzLjU0IDY0Ljk4IDYzLjU0IDcyLjM1IDI4LjI2IDQ4LjQ3IDU2LjI4IDQwLjEyIDU2LjI4IDI4LjM2IDI3LjkxIDIwLjM3IDYzLjUzIDEuMzEgNjMuNTMiLz4KICA8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjEwNy42MyAwIDE2Ny40NiAwIDE2NC41OCAxNC45OCAxMjQuNTMgMTQuOTggMTIyLjY3IDI0LjM3IDE1Ni4wMyAyNC4zNyAxNTMuMyAzOC44OSAxMTkuODEgMzguODkgMTE3Ljk3IDQ4Ljc5IDE1OC4yNyA0OC43OSAxNTUuNjYgNjMuNTQgOTQuODcgNjMuNTQgMTA3LjYzIDAiLz4KICA8Zz4KICAgIDxwb2x5Z29uIGNsYXNzPSJzdDEiIHBvaW50cz0iMTk0Ljk1IDguNjEgMTk2LjU3IC4wNCAxNzcuMDggLjA0IDE3MS44NiAyNy44MSAxOTQuOTUgOC42MSIvPgogICAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIyNDYuMzIgLjAyIDIyMy45OCAuMDIgMTkwLjU1IDMxLjkzIDE5NC40IDExLjUyIDE3MS4zMiAzMC43MSAxNjUuMTUgNjMuNTQgMTg0Ljk3IDYzLjU0IDE4Ni4wNyA1Ny41OCAyMDIuNyA0MS45NiAyMTUuOTkgNjMuNTIgMjM4LjE5IDYzLjUyIDIxNi43MiAyOC43IDI0Ni4zMiAuMDIiLz4KICA8L2c+Cjwvc3ZnPg==" alt="MEK logo" class="logo">
+      <h1>Leads dashboard</h1>
+      <p class="sub">Mek-Rider: van prospect tot gewonnen offerte</p>
+    </div>
+    <div class="hbtns">
+      <button class="btn ghost" id="exportBtn" onclick="window.__mekExport()">Exporteer</button>
+      <button class="btn ghost" id="importBtn">Importeer Excel</button>
+      <input type="file" id="importFile" accept=".xlsx,.xls,.csv" class="sr" aria-label="Excel-bestand kiezen">
+      <button class="btn" id="add">+ Nieuwe lead</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" role="status"></div>
+
+  <div class="sect">Pijplijn</div>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="summary">
+    <div class="card">
+      <div class="lbl">Verdeling offertewaarde</div>
+      <div class="bar" id="bar"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="card">
+      <div class="lbl">Open pijplijn (interesse + offerte)</div>
+      <div class="big" id="pipe">€ 0</div>
+    </div>
+    <div class="card">
+      <div class="lbl">Winratio (gewonnen / beslist)</div>
+      <div class="big" id="ratio">–</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <h2>Leads</h2>
+    <span class="clear" id="clear"></span>
+    <div id="kansChips" style="display: flex; gap: 6px"></div>
+    <select class="sel" id="plaats" aria-label="Filter op plaats"><option value="">Alle plaatsen</option></select>
+    <input class="search" id="q" type="search" placeholder="Zoek bedrijf of contact" aria-label="Zoek leads">
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th data-sort="kans">Kans</th>
+        <th data-sort="bedrijf">Bedrijf</th>
+        <th data-sort="status">Status</th>
+        <th>Contact · zoek contactpersoon</th>
+        <th data-sort="volgende">Volgende actie</th>
+        <th data-sort="waarde" class="num">Offertewaarde</th>
+        <th data-sort="datum">Datum</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <footer>Gegevens worden gedeeld opgeslagen: iedereen met wie je dit dashboard deelt en die mag bewerken, ziet en wijzigt dezelfde leads. Importeren werkt met de MEK-leadlijst in Excel (tabblad "Leads"); bedrijven die al in het dashboard staan worden overgeslagen.</footer>
+</div>
+
+<dialog id="dlg">
+  <div class="dlg">
+    <h3 id="dlg-title">Nieuwe lead</h3>
+    <div class="fgrid">
+      <div class="f w2"><label for="f-bedrijf">Bedrijfsnaam *</label><input id="f-bedrijf" autocomplete="organization"></div>
+      <div class="f"><label for="f-kans">Kans</label><select id="f-kans"><option value="A">A: direct benaderen</option><option value="B">B: eerst onderzoeken</option><option value="C">C: lage prioriteit</option><option value="">Onbekend</option></select></div>
+      <div class="f"><label for="f-segment">Segment</label><input id="f-segment" placeholder="Bijv. 3PL, DC, warehouse"></div>
+      <div class="f"><label for="f-familie">Familiebedrijf</label><select id="f-familie"><option value="">Onbekend</option><option value="ja">Ja</option><option value="groot">Ja, groot familiebedrijf</option><option value="nee">Nee</option></select></div>
+      <div class="f"><label for="f-adres">Adres</label><input id="f-adres"></div>
+      <div class="f"><label for="f-plaats">Postcode en plaats</label><input id="f-plaats" placeholder="5705 CL Helmond"></div>
+
+      <div class="fsect">Contact</div>
+      <div class="f"><label for="f-contact">Contactpersoon</label><input id="f-contact" autocomplete="name"></div>
+      <div class="f"><label for="f-functie">Functie</label><input id="f-functie" placeholder="Bijv. warehouse manager"></div>
+      <div class="f"><label for="f-tel">Telefoon</label><input id="f-tel" type="tel"></div>
+      <div class="f"><label for="f-email">E-mail</label><input id="f-email" type="email"></div>
+      <div class="f"><label for="f-web">Website</label><input id="f-web" type="url" placeholder="https://"></div>
+      <div class="f"><label for="f-maps">Google Maps-link</label><input id="f-maps" type="url"></div>
+
+      <div class="fsect">Opvolging</div>
+      <div class="f"><label for="f-status">Status</label>
+        <select id="f-status"></select></div>
+      <div class="f"><label for="f-datum">Datum (laatste contact)</label><input id="f-datum" type="date"></div>
+      <div class="f"><label for="f-volgende">Volgende actie</label><input id="f-volgende" placeholder="Bijv. bellen di 14-10"></div>
+      <div class="f"><label for="f-aantal">Aantal Mek-Riders</label><input id="f-aantal" type="number" min="0" step="1" value="0"></div>
+      <div class="f w2"><label for="f-waarde">Offertewaarde (€ excl. btw)</label><input id="f-waarde" type="number" min="0" step="100">
+        <div class="hint">Voorstel: aantal × € 22.500 adviesprijs</div></div>
+      <div class="f full" id="f-reden-wrap" hidden><label for="f-reden">Reden verloren / geen interesse</label><input id="f-reden" placeholder="Bijv. prijs, concurrent, geen budget"></div>
+      <div class="f full"><label for="f-waarom">Waarom interessant</label><textarea id="f-waarom"></textarea></div>
+      <div class="f full"><label for="f-notitie">Notities</label><textarea id="f-notitie"></textarea></div>
+    </div>
+    <div class="err" id="f-err"></div>
+    <div class="dlg-actions">
+      <button class="btn danger" id="f-del" hidden>Verwijderen</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="f-cancel">Annuleren</button>
+      <button class="btn" id="f-save">Opslaan</button>
+    </div>
+  </div>
+</dialog>
+
+<script id="seed" type="application/json">[{"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Hoeksestraat 23", "bedrijf": "A. Kanters Internationaal Transport", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=14551805645441201520", "notitie": "", "plaats": "5712 AP Someren", "reden": "", "segment": "Transport", "status": "prospect", "tel": "+31 493 440 233", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Vooral internationaal transport.", "web": "http://www.kanterstransport.nl/", "id": "a-kanters-internationaal-transport-5712-ap"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Frontstraat 3B", "bedrijf": "ADEZZ magazijn", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=14630795041546313973", "notitie": "", "plaats": "5405 AK Uden", "reden": "", "segment": "Eigen magazijn producent", "status": "prospect", "tel": "", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Magazijn van producent tuinproducten; lange/afwijkende pallets mogelijk.", "web": "", "id": "adezz-magazijn-5405-ak"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Molenweg 93", "bedrijf": "Alju B.V.", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=13114618256006344562", "notitie": "", "plaats": "5349 AC Oss", "reden": "", "segment": "Transport & distributie", "status": "prospect", "tel": "+31 412 745 030", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Transport en distributie.", "web": "http://www.alju.nl/", "id": "alju-b-v-5349-ac"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Zandhoek 1B", "bedrijf": "Bevers Transport B.V.", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=13809773079583035556", "notitie": "", "plaats": "5427 PJ Boekel", "reden": "", "segment": "Containertransport", "status": "prospect", "tel": "+31 492 321 613", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Containertransport.", "web": "https://www.beverscontainertransport.nl/", "id": "bevers-transport-b-v-5427-pj"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Hoijserstraat 2A", "bedrijf": "Bloemendaal Pallets (Geldrop Logistics)", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=11726268059400573444", "notitie": "", "plaats": "5711 PV Someren", "reden": "", "segment": "Palletleverancier", "status": "prospect", "tel": "+31 40 285 7343", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Veel palletbewegingen; ook interessant als netwerkpartner.", "web": "https://www.geldroplogistics.nl/", "id": "bloemendaal-pallets-geldrop-logistics-5711-pv"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 3, "adres": "Jagersveld 6a", "bedrijf": "Chain Logistics BV", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=2673039270042351106", "notitie": "", "plaats": "5405 BW Uden", "reden": "", "segment": "Opslag & distributie", "status": "offerte", "tel": "+31 88 111 5200", "updatedAt": "2026-10-01T11:48:14.035Z", "volgende": "Nabellen", "waarde": 67500, "waarom": "Opslag en distributie met laadramps.", "web": "https://www.chain-logistics.nl/", "id": "chain-logistics-bv-5405-bw"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Industrieweg 64", "bedrijf": "DDEfulfilment", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "nee", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=2781614704551310110", "notitie": "", "plaats": "5422 VK Gemert", "reden": "", "segment": "Fulfilment", "status": "prospect", "tel": "+31 6 43166681", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Jong fulfilmentbedrijf; checken hoeveel palletwerk.", "web": "https://ddefulfilment.nl/", "id": "ddefulfilment-5422-vk"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Industrielaan 3-A", "bedrijf": "DESTIL Uden", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=7939894752596258867", "notitie": "", "plaats": "5405 AA Uden", "reden": "", "segment": "Groothandel bouw & industrie", "status": "prospect", "tel": "+31 413 255 055", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Groothandelsvestiging; lange materialen (profielen) passen bij lange-pallet-verhaal.", "web": "https://www.destil.nl/over-destil/vestigingen/destil-uden", "id": "destil-uden-5405-aa"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Branchweg 8", "bedrijf": "DHL CityHub Helmond", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=17561790718841606844", "notitie": "", "plaats": "5705 DR Helmond", "reden": "", "segment": "Pakket-hub / crossdock", "status": "prospect", "tel": "", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Werkt als crossdock; inkoop materieel vaak centraal bij DHL.", "web": "http://dhl.com/", "id": "dhl-cityhub-helmond-5705-dr"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Voltstraat 5", "bedrijf": "Driessen Vlierden Transport", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=8997060848604918199", "notitie": "", "plaats": "5753 RL Deurne", "reden": "", "segment": "Transport & laden/lossen", "status": "prospect", "tel": "+31 493 750 640", "updatedAt": "2026-10-01T11:51:10.376Z", "volgende": "nabllen 5-10", "waarde": 0, "waarom": "Veel laad- en losbewegingen aan het dock.", "web": "http://www.driessenvlierden.nl/", "id": "driessen-vlierden-transport-5753-rl"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Rietbeemdweg 5", "bedrijf": "EDCO Helmond", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=7370792626876366579", "notitie": "", "plaats": "5705 BH Helmond", "reden": "", "segment": "Opslag & distributie", "status": "prospect", "tel": "+31 40 250 1111", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Opslag/distributie met dockplanning.", "web": "http://www.edco.nl/", "id": "edco-helmond-5705-bh"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Scheiweg 72", "bedrijf": "Emtrade", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "nee", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=444199720849070824", "notitie": "", "plaats": "5421 XL Gemert", "reden": "", "segment": "Magazijninrichting / groothandel", "status": "prospect", "tel": "", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Eigen magazijn én mogelijke partner (richt magazijnen in).", "web": "https://www.emtrade.nl/", "id": "emtrade-5421-xl"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Kantsingel 15", "bedrijf": "Expeditie- en Transportbedrijf Dollevoet B.V.", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=6158297133006717607", "notitie": "", "plaats": "5349 AJ Oss", "reden": "", "segment": "Expeditie met warehouse", "status": "prospect", "tel": "+31 73 521 2769", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Hoofdvestiging met eigen warehouse en eigen laadpersoneel.", "web": "https://www.dollevoet.nl/", "id": "expeditie-en-transportbedrijf-dollevoet-b-v-5349-aj"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Dommel 35/37", "bedrijf": "Expeditie Wim van Heugten", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=2574640369439233724", "notitie": "", "plaats": "5422 VH Gemert", "reden": "", "segment": "Expeditie", "status": "prospect", "tel": "+31 492 361 243", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Klein familiebedrijf in expeditie.", "web": "", "id": "expeditie-wim-van-heugten-5422-vh"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Lagedijk 28A", "bedrijf": "Friedi Slegers Transport & Warehousing", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=2045142797773211415", "notitie": "", "plaats": "5705 BZ Helmond", "reden": "", "segment": "Transport & warehousing", "status": "prospect", "tel": "+31 492 525 190", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Transport en warehousing, middelgroot.", "web": "https://www.facebook.com/friedislegers/", "id": "friedi-slegers-transport-warehousing-5705-bz"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Bosbeemd 3", "bedrijf": "Future Fulfilment", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "nee", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=2401665211187358264", "notitie": "", "plaats": "5741 TR Beek en Donk", "reden": "", "segment": "Fulfilment", "status": "prospect", "tel": "+31 85 004 1572", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "E-commerce fulfilment; checken hoeveel palletwerk.", "web": "https://futurefulfilment.nl/", "id": "future-fulfilment-5741-tr"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Beemdstraat 10", "bedrijf": "Gebroeders van Eijk Logistiek", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=9687817989803624893", "notitie": "", "plaats": "5711 CV Someren", "reden": "", "segment": "Logistiek / warehouse", "status": "prospect", "tel": "+31 493 712 310", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Warehouse met ramps; zelfde familie als Gebr. van Eijk Transport Asten: één gesprek, twee locaties.", "web": "http://www.gebroedersvaneijk.nl/", "id": "gebroeders-van-eijk-logistiek-5711-cv"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Het Hoogvelt 8", "bedrijf": "Gebroeders van Eijk Transport", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=7661837632567934843", "notitie": "", "plaats": "5721 VW Asten", "reden": "", "segment": "Transport & logistiek", "status": "prospect", "tel": "+31 493 348 880", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Hoofdvestiging Gebr. van Eijk; combineer met locatie Someren.", "web": "https://www.gebroedersvaneijk.nl/", "id": "gebroeders-van-eijk-transport-5721-vw"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Ommelsveld 5", "bedrijf": "H. Essers Asten (Hoefnagels)", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "groot", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=1981537863628635958", "notitie": "", "plaats": "5721 VT Asten", "reden": "", "segment": "Transport & logistiek (groep)", "status": "prospect", "tel": "+31 493 671 888", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Onderdeel van groot familiebedrijf H.Essers; inkoop waarschijnlijk centraal.", "web": "http://www.hoefnagelstransport.nl/", "id": "h-essers-asten-hoefnagels-5721-vt"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "IJsselstraat 30", "bedrijf": "Hartog & Bikker Logistics b.v.", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=13863307259961455486", "notitie": "", "plaats": "5347 KG Oss", "reden": "", "segment": "Logistiek dienstverlener", "status": "prospect", "tel": "+31 412 671 777", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Klachten over dockplanning: 'sneller door het dock' past precies.", "web": "", "id": "hartog-bikker-logistics-b-v-5347-kg"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Ketelmeer 23", "bedrijf": "Hospital Logistics Nederland Bv", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=6318697648461006578", "notitie": "", "plaats": "5347 JX Oss", "reden": "", "segment": "Zorglogistiek", "status": "prospect", "tel": "", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Opslag en distributie in de zorg.", "web": "", "id": "hospital-logistics-nederland-bv-5347-jx"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Loopkantstraat 25C", "bedrijf": "HUFA Logistics", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=10543237392675366954", "notitie": "", "plaats": "5405 AC Uden", "reden": "", "segment": "Meubelbezorging aan huis", "status": "prospect", "tel": "+31 85 401 1396", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Thuisbezorging meubels, weinig palletwerk.", "web": "http://www.hufa-logistics.nl/", "id": "hufa-logistics-5405-ac"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Witvrouwenbergweg 21", "bedrijf": "Hurkmans Transport B.V", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=15204363185382055389", "notitie": "", "plaats": "5711 CN Someren", "reden": "", "segment": "Bulktransport", "status": "prospect", "tel": "+31 85 273 2340", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Vooral bulk/silo; weinig palletwerk.", "web": "http://www.hurkmans-transport.nl/", "id": "hurkmans-transport-b-v-5711-cn"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "De Hooge Akker 6", "bedrijf": "Jan de Rijk Logistics (Geldrop)", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "groot", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=1449410260850988992", "notitie": "", "plaats": "5661 NG Geldrop", "reden": "", "segment": "Warehousing & distributie", "status": "prospect", "tel": "+31 40 289 5555", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Groot familiebedrijf met warehousing in Geldrop (2 locaties); inkoop mogelijk via hoofdkantoor.", "web": "http://www.janderijk.com/", "id": "jan-de-rijk-logistics-geldrop-5661-ng"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Sojadijk 4-6", "bedrijf": "Kuehne + Nagel Logistics BV", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=2898518127676474474", "notitie": "", "plaats": "5704 RL Helmond", "reden": "", "segment": "3PL contractlogistiek", "status": "prospect", "tel": "+31 492 338 338", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Grote 3PL met veel palletbewegingen. Inkoop materieel mogelijk centraal.", "web": "https://www.kuehne-nagel.com/", "id": "kuehne-nagel-logistics-bv-5704-rl"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Bosscheweg 40", "bedrijf": "Lankveld Logistics B.V.", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=12482057392346298672", "notitie": "", "plaats": "5741 SX Beek en Donk", "reden": "", "segment": "Transport & opslag", "status": "prospect", "tel": "+31 492 465 600", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Familiebedrijf met opslag.", "web": "https://www.lankveld.com/", "id": "lankveld-logistics-b-v-5741-sx"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Laagveld 1", "bedrijf": "Lineage Asten", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "nee", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=16687219227616632830", "notitie": "", "plaats": "5721 VV Asten", "reden": "", "segment": "Koel- en vrieshuis", "status": "prospect", "tel": "+31 493 695 335", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Multinational koelhuis; eerst geschiktheid voor koel/vries checken.", "web": "https://www.onelineage.com/", "id": "lineage-asten-5721-vv"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Hunnenpad 6A", "bedrijf": "Lion Logistics Oss", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=15064730386591560321", "notitie": "", "plaats": "5349 BG Oss", "reden": "", "segment": "Koerier / thuisbezorging", "status": "prospect", "tel": "+31 412 849 123", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Weinig palletwerk; lage prioriteit.", "web": "http://www.lionlogistics.nl/", "id": "lion-logistics-oss-5349-bg"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Bakelseweg 60", "bedrijf": "Manders Handel & Transport", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=5626921549688272579", "notitie": "", "plaats": "5752 PD Deurne", "reden": "", "segment": "Transport", "status": "prospect", "tel": "", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Klein bedrijf, snel laden.", "web": "https://www.manders.eu/", "id": "manders-handel-transport-5752-pd"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Spaarpot Oost 4", "bedrijf": "Manders Transport & Logistics B.V.", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=9293641261852110265", "notitie": "", "plaats": "5667 KT Geldrop", "reden": "", "segment": "Transport & logistiek", "status": "prospect", "tel": "+31 40 280 9620", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Familiebedrijf; checken hoeveel warehouse-activiteit.", "web": "http://www.manderslogistics.nl/", "id": "manders-transport-logistics-b-v-5667-kt"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Kanaalstraat 41", "bedrijf": "MNG Logistics", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=511851765127259343", "notitie": "", "plaats": "5347 KM Oss", "reden": "", "segment": "Transport & opslag", "status": "prospect", "tel": "+31 6 52245404", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Transport en opslag, kleiner bedrijf.", "web": "https://mnglogistics.nl/", "id": "mng-logistics-5347-km"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Frontstraat 13", "bedrijf": "Modine (magazijn Uden)", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=9258199245611284904", "notitie": "", "plaats": "5405 AK Uden", "reden": "", "segment": "Eigen magazijn producent", "status": "prospect", "tel": "", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Eigen magazijn van producent; klant beslist zelf over materieel.", "web": "", "id": "modine-magazijn-uden-5405-ak"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Gerstdijk 24", "bedrijf": "NUNNER Logistics BV", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=15363537801898787901", "notitie": "", "plaats": "5704 RG Helmond", "reden": "", "segment": "Logistiek dienstverlener / DC", "status": "prospect", "tel": "+31 40 204 5550", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Groot DC (20+ docks volgens chauffeurs), lange laad-/lostijden: sterk efficiëntie-verhaal.", "web": "", "id": "nunner-logistics-bv-5704-rg"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Rechteloop 20", "bedrijf": "Peter Slits Transport", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=4191683505786101288", "notitie": "", "plaats": "5421 WW Gemert", "reden": "", "segment": "Transport", "status": "prospect", "tel": "+31 492 319 203", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Vooral transport.", "web": "", "id": "peter-slits-transport-5421-ww"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Keltenweg 30", "bedrijf": "PLUS Distributiecentrum Oss", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=2204364137640544311", "notitie": "", "plaats": "5342 LP Oss", "reden": "", "segment": "Retail-DC", "status": "prospect", "tel": "+31 88 344 6000", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Groot retail-DC, deels geautomatiseerd, lange lostijden. Langer traject via hoofdkantoor (A/B).", "web": "http://www.plus.nl/", "id": "plus-distributiecentrum-oss-5342-lp"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Jagersveld 14", "bedrijf": "Sanders | Fritom B.V.", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=1432126676755629484", "notitie": "", "plaats": "5405 BW Uden", "reden": "", "segment": "Groupage / distributie", "status": "prospect", "tel": "+31 413 224 444", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Groupage-vervoerder met veel docks en lange werkdagen: veel crossdock-bewegingen.", "web": "https://www.sandersfritom.nl/", "id": "sanders-fritom-b-v-5405-bw"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Het Hoogvelt 12", "bedrijf": "Schneider Expeditie BV", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=12700227534222803375", "notitie": "", "plaats": "5721 VW Asten", "reden": "", "segment": "Expeditie", "status": "prospect", "tel": "+31 493 671 111", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Expeditie met laden/lossen en douane.", "web": "http://www.schneider-transport.com/", "id": "schneider-expeditie-bv-5721-vw"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Loopkantstraat 19", "bedrijf": "Sidekix", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=7910136737276523443", "notitie": "", "plaats": "5405 NB Uden", "reden": "", "segment": "Fulfilment / e-commerce", "status": "prospect", "tel": "+31 88 623 7000", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Fulfilment voor o.a. telecom; checken hoeveel palletwerk.", "web": "https://www.sidekix.nl/", "id": "sidekix-5405-nb"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Vlier 8", "bedrijf": "Snelvervoer v.d. Boogaard B.V.", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=11640476305925335488", "notitie": "", "plaats": "5662 TM Geldrop", "reden": "", "segment": "Spoedvervoer", "status": "prospect", "tel": "+31 40 286 3343", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Tijdkritisch vervoer, weinig palletopslag.", "web": "https://www.snelvervoer.nl/", "id": "snelvervoer-v-d-boogaard-b-v-5662-tm"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Goorkensweg 5A", "bedrijf": "Transport 4u", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=2846782139817014815", "notitie": "", "plaats": "5408 SC Volkel", "reden": "", "segment": "Koerier", "status": "prospect", "tel": "+31 413 432 011", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Koerier / kleine zendingen.", "web": "http://www.transport-4u.nl/", "id": "transport-4u-5408-sc"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Vorstengrafdonk 71", "bedrijf": "Transport ITC Holland BV", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=2149118184617370345", "notitie": "", "plaats": "5342 LW Oss", "reden": "", "segment": "Transport (tank)", "status": "prospect", "tel": "+31 412 664 230", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Vooral tanktransport/cleaning; controleren of er palletwerk is.", "web": "http://www.itcholland.com/", "id": "transport-itc-holland-bv-5342-lw"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Dr. Huub van Doorneweg 4", "bedrijf": "V & V Transport BV", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=13631545448763997466", "notitie": "", "plaats": "5753 PM Deurne", "reden": "", "segment": "Transport", "status": "prospect", "tel": "+31 493 383 877", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Familiebedrijf met betrokken eigenaren.", "web": "http://www.vvtransportbv.nl/", "id": "v-v-transport-bv-5753-pm"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Vossenbeemd 112", "bedrijf": "Van den Broek Logistics BV", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=17753376897209326890", "notitie": "", "plaats": "5705 CL Helmond", "reden": "", "segment": "Transport & opslag", "status": "prospect", "tel": "+31 492 751 400", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Transport en opslag in één, laadramps op het terrein.", "web": "http://www.broeklogistics.nl/", "id": "van-den-broek-logistics-bv-5705-cl"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Erfstraat 23", "bedrijf": "Van den Heuvel Logistiek Uden B.V. (SVZ)", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=9655159512734088382", "notitie": "", "plaats": "5405 BE Uden", "reden": "", "segment": "Logistiek dienstverlener", "status": "prospect", "tel": "+31 413 339 933", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Onderdeel van SVZ, veel vrachtverkeer. Kans op meerdere SVZ-locaties.", "web": "https://svztransport.nl/", "id": "van-den-heuvel-logistiek-uden-b-v-svz-5405-be"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Houtakker 8", "bedrijf": "van den Heuvel Op- en overslag B.V.", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=9117625217272788114", "notitie": "", "plaats": "5761 DD Bakel", "reden": "", "segment": "Op- en overslag", "status": "prospect", "tel": "+31 492 341 243", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Op- en overslag = crossdock-achtig werk.", "web": "http://www.heuvelbakel.nl/", "id": "van-den-heuvel-op-en-overslag-b-v-5761-dd"}, {"aanpak": "Lage prioriteit: opnemen in nieuwsbrief/later", "aantal": 0, "adres": "Bovenstraat 5", "bedrijf": "Van Grunsven Transport", "contact": "", "createdAt": "2026-10-01T08:54:01.703575+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "C", "maps": "https://maps.google.com/?cid=10204087204805364179", "notitie": "", "plaats": "5405 BD Uden", "reden": "", "segment": "Transport", "status": "prospect", "tel": "+31 413 310 177", "updatedAt": "2026-10-01T08:54:01.703575+00:00", "volgende": "", "waarde": 0, "waarom": "Vooral transport; controleren of er een warehouse is.", "web": "https://www.vangrunsventransport.nl/", "id": "van-grunsven-transport-5405-bd"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Spaarpot 7", "bedrijf": "van Nunen Transport & Logistiek bv", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=11727078406503264714", "notitie": "", "plaats": "5667 KV Geldrop", "reden": "", "segment": "Transport & opslag", "status": "prospect", "tel": "+31 40 286 3346", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Familiebedrijf met opslag, laden en lossen.", "web": "http://www.nuntrans.nl/", "id": "van-nunen-transport-logistiek-bv-5667-kv"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Bijenweg 3", "bedrijf": "Van Uden - Bekx Transport B.V.", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=5622176600401383962", "notitie": "", "plaats": "5741 SG Beek en Donk", "reden": "", "segment": "Transport", "status": "prospect", "tel": "+31 492 461 528", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Transportbedrijf; checken of er een warehouse is.", "web": "http://www.vanudenbekxtransport.nl/", "id": "van-uden-bekx-transport-b-v-5741-sg"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Vossenbeemd 111", "bedrijf": "Vegro Distributiecentrum", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=113879465661181979", "notitie": "", "plaats": "5705 CL Helmond", "reden": "", "segment": "Eigen DC (groothandel zorghulpmiddelen)", "status": "prospect", "tel": "", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Eigen DC: klant beslist zelf over materieel.", "web": "http://www.vegro.nl/", "id": "vegro-distributiecentrum-5705-cl"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Stipdonk 46", "bedrijf": "Ven Poultry B.V.", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=2736455547679897023", "notitie": "", "plaats": "5715 PD Lierop", "reden": "", "segment": "Producent met laadramps", "status": "prospect", "tel": "+31 492 537 066", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Laadt de hele dag via ramps; eigen expeditie.", "web": "http://www.venpoultry.nl/", "id": "ven-poultry-b-v-5715-pd"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Randweg 1", "bedrijf": "Vendrig Transport B.V.", "contact": "", "createdAt": "2026-10-01T11:37:48.598696+00:00", "datum": "2026-10-01", "email": "", "familie": "ja", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=6289469009100065767", "notitie": "", "plaats": "5711 DJ Someren", "reden": "", "segment": "Transport & opslag", "status": "prospect", "tel": "+31 493 495 937", "updatedAt": "2026-10-01T11:37:48.598696+00:00", "volgende": "", "waarde": 0, "waarom": "Familiebedrijf met opslag en laadramps; veel vrachtverkeer.", "web": "http://www.vendrigtransport.nl/", "id": "vendrig-transport-b-v-5711-dj"}, {"aanpak": "Eerst onderzoeken (website/LinkedIn), daarna benaderen", "aantal": 0, "adres": "Maaskade 13", "bedrijf": "Vice Versa", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "B", "maps": "https://maps.google.com/?cid=12396078551201572525", "notitie": "", "plaats": "5347 KD Oss", "reden": "", "segment": "Koelhuis / opslag", "status": "prospect", "tel": "", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Koelhuis: eerst geschiktheid Mek-Rider voor koel/vries controleren.", "web": "http://www.vice-versa.org/", "id": "vice-versa-5347-kd"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Waalkade 13", "bedrijf": "Vos Bulk Logistics Oss B.V.", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=599468943085018137", "notitie": "", "plaats": "5347 KR Oss", "reden": "", "segment": "Warehouse", "status": "prospect", "tel": "+31 412 699 565", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Warehouse met heftrucklading naast Vos Distri.", "web": "http://www.voslogistics.com/", "id": "vos-bulk-logistics-oss-b-v-5347-kr"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Waalkade 12", "bedrijf": "Vos Distri Logistics Oss", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=3504324634020436860", "notitie": "", "plaats": "5347 KS Oss", "reden": "", "segment": "Distributie", "status": "prospect", "tel": "+31 412 699 301", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Distributie (o.a. IKEA thuisbezorging). Combineer met Vos Bulk en Vos Helmond.", "web": "https://www.voslogistics.com/", "id": "vos-distri-logistics-oss-5347-ks"}, {"aanpak": "Direct benaderen: LinkedIn + mail met one-pager, binnen 1 week bellen", "aantal": 0, "adres": "Haverdijk 3A", "bedrijf": "Vos Logistics Helmond", "contact": "", "createdAt": "2026-10-01T08:51:30.505509+00:00", "datum": "2026-10-01", "email": "", "functie": "", "kans": "A", "maps": "https://maps.google.com/?cid=11499220521674917384", "notitie": "", "plaats": "5704 RC Helmond", "reden": "", "segment": "Logistiek dienstverlener / DC", "status": "prospect", "tel": "+31 492 531 313", "updatedAt": "2026-10-01T08:51:30.505509+00:00", "volgende": "", "waarde": 0, "waarom": "Groot DC met veel docks, o.a. distributie voor IKEA. Zelfde groep als Vos in Oss: kans op meerdere locaties.", "web": "https://www.voslogistics.com/", "id": "vos-logistics-helmond-5704-rc"}]</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const PRICE = 22500;
+  const STATUS = {
+    prospect:  { label: 'Nieuw prospect', short: 'Prospect', c: 'var(--c-pro)', money: false },
+    benaderd:  { label: 'Benaderd', short: 'Benaderd', c: 'var(--c-ben)', money: false },
+    interesse: { label: 'Geïnteresseerd', short: 'Geïnteresseerd', c: 'var(--c-int)', money: true },
+    offerte:   { label: 'Offerte uitgebracht', short: 'Offerte', c: 'var(--c-off)', money: true },
+    gewonnen:  { label: 'Offerte gewonnen', short: 'Gewonnen', c: 'var(--c-won)', money: true },
+    verloren:  { label: 'Offerte verloren', short: 'Verloren', c: 'var(--c-lost)', money: true },
+  };
+  const KANS = { A: 'var(--k-a)', B: 'var(--k-b)', C: 'var(--k-c)' };
+  const ROLES = [['Warehouse manager', 'warehouse manager'], ['Supply chain manager', 'supply chain manager'], ['Crossdock manager', 'crossdock manager'], ['Eigenaar / directeur', 'eigenaar OR directeur']];
+  const eur = n => '€ ' + Math.round(n || 0).toLocaleString('nl-NL');
+  const today = () => new Date().toISOString().slice(0, 10);
+  const fmtDate = s => { if (!s) return '–'; const [y, m, d] = s.split('-'); return `${d}-${m}-${y}`; };
+
+  let leads = [], filter = null, kansF = new Set(), plaatsF = '', famF = false;
+  let sortKey = 'kans', sortDir = 1;
+  let db = null, col = null, memory = true;
+
+  function banner(msg, ok) { const b = $('banner'); b.textContent = msg; b.className = 'banner' + (ok ? ' ok' : ''); b.style.display = msg ? 'block' : 'none'; }
+
+  // status-keuzelijst in formulier
+  Object.entries(STATUS).forEach(([k, s]) => { const o = document.createElement('option'); o.value = k; o.textContent = s.label; $('f-status').appendChild(o); });
+
+  // ---------- opslag ----------
+  // Online (claude.ai): gedeelde database. Lokaal: localStorage in deze browser,
+  // eerste keer gevuld met data/leads.json (of de ingebouwde kopie).
+  const LS_KEY = 'mek_leads_v1';
+  let local = false;
+  function lsLoad() { try { const v = localStorage.getItem(LS_KEY); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function lsSave() { try { localStorage.setItem(LS_KEY, JSON.stringify(leads)); } catch (e) { banner('Opslaan in de browser mislukt: ' + e.message); } }
+  (async () => {
+    try { if (window.claude && claude.use) db = await claude.use('db'); } catch (e) { db = null; }
+    if (db) {
+      memory = false;
+      col = db.collection('leads');
+      col.onSnapshot(snap => { leads = snap.docs.map(d => ({ id: d.id, ...d.data() })); render(); },
+        err => banner('De leads konden niet worden geladen (' + (err && err.code || 'fout') + ').'));
+      return;
+    }
+    local = true;
+    const saved = lsLoad();
+    if (saved) { leads = saved; render(); return; }
+    let seed = null;
+    try { const r = await fetch('data/leads.json'); if (r.ok) seed = await r.json(); } catch (e) {}
+    if (!seed) { try { seed = JSON.parse(document.getElementById('seed').textContent); } catch (e) { seed = []; } }
+    leads = seed; lsSave(); render();
+    banner('Lokale versie: wijzigingen worden opgeslagen in deze browser. Gebruik "Exporteer" om een back-up te maken.', true);
+  })();
+
+  async function saveLead(id, data) {
+    if (memory) {
+      if (id) leads = leads.map(l => l.id === id ? { id, ...data } : l);
+      else leads.push({ id: 'm' + Date.now() + Math.random().toString(36).slice(2, 6), ...data });
+      if (local) lsSave();
+      render(); return;
+    }
+    if (id) await col.doc(id).set(data); else await col.add(data);
+  }
+  async function removeLead(id) {
+    if (memory) { leads = leads.filter(l => l.id !== id); if (local) lsSave(); render(); return; }
+    await col.doc(id).delete();
+  }
+  async function patch(l, changes) {
+    const data = { ...l, ...changes, updatedAt: new Date().toISOString() }; delete data.id;
+    try { await saveLead(l.id, data); } catch (e) { banner('Wijziging niet opgeslagen: ' + (e && (e.message || e.code) || 'onbekende fout')); render(); }
+  }
+  // export (lokaal): download leads als JSON
+  window.__mekExport = () => {
+    const blob = new Blob([JSON.stringify(leads, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mek-leads-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+  };
+
+  // ---------- render ----------
+  function el(tag, attrs, text) { const e = document.createElement(tag); if (attrs) Object.entries(attrs).forEach(([k, v]) => k === 'style' ? e.setAttribute('style', v) : (e[k] = v)); if (text != null) e.textContent = text; return e; }
+  function link(href, text) { const a = el('a', { href, target: '_blank', rel: 'noopener' }, text); return a; }
+
+  function render() {
+    const sums = {}, counts = {};
+    Object.keys(STATUS).forEach(k => { sums[k] = 0; counts[k] = 0; });
+    leads.forEach(l => { const s = STATUS[l.status] ? l.status : 'prospect'; counts[s]++; sums[s] += +l.waarde || 0; });
+
+    // KPI-tegels
+    $('kpis').innerHTML = '';
+    Object.entries(STATUS).forEach(([k, s]) => {
+      const b = el('button', { className: 'kpi' + (filter === k ? ' active' : '') });
+      b.style.setProperty('--c', s.c); b.setAttribute('aria-pressed', filter === k);
+      b.appendChild(el('div', { className: 'lbl' }, s.label));
+      b.appendChild(el('div', { className: 'num' }, counts[k]));
+      if (s.money) b.appendChild(el('div', { className: 'eur' }, eur(sums[k])));
+      else {
+        const ab = ['A', 'B', 'C'].map(x => leads.filter(l => (STATUS[l.status] ? l.status : 'prospect') === k && l.kans === x).length);
+        b.appendChild(el('div', { className: 'eur soft' }, `A ${ab[0]} · B ${ab[1]} · C ${ab[2]}`));
+      }
+      b.onclick = () => { filter = filter === k ? null : k; render(); };
+      $('kpis').appendChild(b);
+    });
+
+    // verdeling (alleen offertefasen)
+    const money = ['interesse', 'offerte', 'gewonnen', 'verloren'];
+    const total = money.reduce((a, k) => a + sums[k], 0);
+    $('bar').innerHTML = ''; $('legend').innerHTML = '';
+    money.forEach(k => {
+      const s = STATUS[k], d = el('div'); d.style.width = total ? (sums[k] / total * 100) + '%' : '0'; d.style.background = s.c; d.title = s.label + ': ' + eur(sums[k]);
+      $('bar').appendChild(d);
+      const lg = el('span', null, s.short + ' ' + (total ? Math.round(sums[k] / total * 100) : 0) + '%'); lg.style.setProperty('--c', s.c); $('legend').appendChild(lg);
+    });
+    $('pipe').textContent = eur(sums.interesse + sums.offerte);
+    const decided = counts.gewonnen + counts.verloren;
+    $('ratio').textContent = decided ? Math.round(counts.gewonnen / decided * 100) + '%' : '–';
+
+    // kans-chips
+    $('kansChips').innerHTML = '';
+    ['A', 'B', 'C'].forEach(k => {
+      const c = el('button', { className: 'chip' + (kansF.has(k) ? ' on' : '') }, 'Kans ' + k);
+      c.style.setProperty('--c', KANS[k]); c.setAttribute('aria-pressed', kansF.has(k));
+      c.onclick = () => { kansF.has(k) ? kansF.delete(k) : kansF.add(k); render(); };
+      $('kansChips').appendChild(c);
+    });
+    const fc = el('button', { className: 'chip' + (famF ? ' on' : '') }, 'Familiebedrijf'); fc.style.setProperty('--c', '#e8b04a'); fc.setAttribute('aria-pressed', famF); fc.onclick = () => { famF = !famF; render(); }; $('kansChips').appendChild(fc);
+    // plaatsen
+    const plaatsen = [...new Set(leads.map(l => (l.plaats || '').replace(/^\d{4}\s?[A-Z]{0,2}\s*/i, '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'nl'));
+    const sel = $('plaats'), cur = plaatsF;
+    sel.innerHTML = '<option value="">Alle plaatsen</option>';
+    plaatsen.forEach(p => sel.appendChild(el('option', { value: p }, p)));
+    sel.value = plaatsen.includes(cur) ? cur : '';
+    plaatsF = sel.value;
+
+    // wis-filters
+    $('clear').innerHTML = '';
+    if (filter || kansF.size || plaatsF || famF || $('q').value) {
+      const x = el('button', null, 'Filters wissen');
+      x.onclick = () => { filter = null; kansF.clear(); plaatsF = ''; famF = false; $('q').value = ''; render(); };
+      $('clear').appendChild(x);
+    }
+
+    // tabel
+    const q = $('q').value.trim().toLowerCase();
+    const sOrder = Object.keys(STATUS), kOrder = { A: 0, B: 1, C: 2 };
+    const list = leads
+      .filter(l => !filter || (STATUS[l.status] ? l.status : 'prospect') === filter)
+      .filter(l => !kansF.size || kansF.has(l.kans))
+      .filter(l => !famF || l.familie === 'ja' || l.familie === 'groot')
+      .filter(l => !plaatsF || (l.plaats || '').toLowerCase().includes(plaatsF.toLowerCase()))
+      .filter(l => !q || [l.bedrijf, l.contact, l.email, l.segment, l.plaats].some(v => (v || '').toLowerCase().includes(q)))
+      .sort((a, b) => {
+        let va = a[sortKey], vb = b[sortKey];
+        if (sortKey === 'status') { va = sOrder.indexOf(va); vb = sOrder.indexOf(vb); }
+        if (sortKey === 'kans') { va = kOrder[va] ?? 9; vb = kOrder[vb] ?? 9; if (va === vb) return (a.bedrijf || '').localeCompare(b.bedrijf || '', 'nl'); }
+        if (sortKey === 'waarde') { va = +va || 0; vb = +vb || 0; }
+        if (typeof va === 'string' || typeof vb === 'string') return (va || '').localeCompare(vb || '', 'nl') * sortDir;
+        return ((va || 0) - (vb || 0)) * sortDir;
+      });
+    document.querySelectorAll('th[data-sort]').forEach(th => {
+      const base = th.textContent.replace(/ [▲▼]$/, '');
+      th.textContent = base + (th.dataset.sort === sortKey ? (sortDir > 0 ? ' ▲' : ' ▼') : '');
+    });
+
+    const tb = $('rows'); tb.innerHTML = '';
+    if (!list.length) {
+      const tr = el('tr'), td = el('td', { colSpan: 8, className: 'empty' });
+      td.appendChild(el('b', null, leads.length ? 'Geen leads gevonden' : 'Nog geen leads'));
+      td.appendChild(document.createTextNode(leads.length ? 'Pas de filters of de zoekterm aan.' : 'Klik op “+ Nieuwe lead” of importeer de MEK-leadlijst in Excel.'));
+      tr.appendChild(td); tb.appendChild(tr); return;
+    }
+    list.forEach(l => {
+      const tr = el('tr'), s = STATUS[l.status] || STATUS.prospect;
+      // kans
+      const t1 = el('td'); if (l.kans) { const k = el('span', { className: 'kans' }, l.kans); k.style.setProperty('--c', KANS[l.kans] || 'var(--k-c)'); t1.appendChild(k); } else t1.textContent = '–';
+      // bedrijf
+      const t2 = el('td'); const coEl = el('div', { className: 'co' }, l.bedrijf || '(zonder naam)'); if (l.familie === 'ja' || l.familie === 'groot') coEl.appendChild(el('span', { className: 'fam', title: l.familie === 'groot' ? 'Groot familiebedrijf' : 'Familiebedrijf' }, l.familie === 'groot' ? 'Familie · groot' : 'Familie')); t2.appendChild(coEl);
+      const sub = [l.segment, l.plaats].filter(Boolean).join(' · '); if (sub) t2.appendChild(el('div', { className: 'ct' }, sub));
+      if (l.status === 'verloren' && l.reden) t2.appendChild(el('div', { className: 'ct' }, 'Reden: ' + l.reden));
+      // status
+      const t3 = el('td'), sel = el('select', { className: 'st' }); sel.setAttribute('aria-label', 'Status');
+      Object.entries(STATUS).forEach(([k, v]) => sel.appendChild(el('option', { value: k }, v.short)));
+      sel.value = STATUS[l.status] ? l.status : 'prospect'; sel.style.setProperty('--c', s.c);
+      sel.onchange = () => patch(l, { status: sel.value, datum: today() });
+      t3.appendChild(sel);
+      // contact
+      const t4 = el('td');
+      if (l.contact) t4.appendChild(el('div', { className: 'co' }, l.contact + (l.functie ? ', ' + l.functie : '')));
+      const c2 = el('div', { className: 'ct' });
+      const bits = [];
+      if (l.tel) { const a = el('a', { href: 'tel:' + l.tel.replace(/\s/g, '') }, l.tel); bits.push(a); }
+      if (l.email) { const a = el('a', { href: 'mailto:' + l.email }, l.email); bits.push(a); }
+      if (l.web) bits.push(link(l.web, l.web.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')));
+      if (l.maps) bits.push(link(l.maps, 'Maps'));
+      bits.forEach((b, i) => { if (i) c2.appendChild(document.createTextNode(' · ')); c2.appendChild(b); });
+      if (bits.length) t4.appendChild(c2); else if (!l.contact) t4.textContent = '–';
+      // zoek contactpersoon op LinkedIn
+      const naam = (l.bedrijf || '').replace(/\(.*?\)/g, '').replace(/\b(b\.?v\.?|bv|holding|nederland)\b\.?/gi, '').replace(/\s+/g, ' ').trim();
+      if (naam) {
+        const li = el('div', { className: 'li' });
+        ROLES.forEach(([lbl, role]) => li.appendChild(link('https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent('"' + naam + '" ' + role), lbl)));
+        const g = link('https://www.google.com/search?q=' + encodeURIComponent('site:linkedin.com/in "' + naam + '" (' + ['warehouse manager', 'supply chain manager', 'crossdock manager', 'eigenaar', 'directeur'].map(r => '"' + r + '"').join(' OR ') + ')'), 'Google');
+        g.className = 'g'; g.title = 'Zoek alle functies via Google (werkt ook zonder LinkedIn-account)';
+        li.appendChild(g);
+        t4.appendChild(li);
+      }
+      // volgende actie
+      const t5 = el('td'); t5.appendChild(el('div', null, l.volgende || '–'));
+      // waarde, datum, bewerken
+      const t6 = el('td', { className: 'num' }, s.money || +l.waarde ? eur(l.waarde) : '–');
+      const t7 = el('td', { className: 'dt' }, fmtDate(l.datum));
+      const t8 = el('td', { style: 'text-align: right' }); const eb = el('button', { className: 'icon' }, 'Bewerken'); eb.onclick = () => openForm(l); t8.appendChild(eb);
+      [t1, t2, t3, t4, t5, t6, t7, t8].forEach(t => tr.appendChild(t));
+      if (l.waarom) tr.title = l.waarom;
+      tb.appendChild(tr);
+    });
+  }
+
+  document.querySelectorAll('th[data-sort]').forEach(th => th.onclick = () => {
+    const k = th.dataset.sort;
+    if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = (k === 'datum' || k === 'waarde') ? -1 : 1; }
+    render();
+  });
+  $('q').addEventListener('input', render);
+  $('plaats').addEventListener('change', e => { plaatsF = e.target.value; render(); });
+
+  // ---------- formulier ----------
+  let editing = null, waardeTouched = false, delArmed = false;
+  const F = n => $('f-' + n);
+  const FIELDS = ['bedrijf', 'kans', 'segment', 'familie', 'adres', 'plaats', 'contact', 'functie', 'tel', 'email', 'web', 'maps', 'status', 'datum', 'volgende', 'reden', 'waarom', 'notitie'];
+  function toggleReden() { $('f-reden-wrap').hidden = F('status').value !== 'verloren'; }
+  function openForm(l) {
+    editing = l || null;
+    $('dlg-title').textContent = l ? 'Lead bewerken' : 'Nieuwe lead';
+    FIELDS.forEach(k => { F(k).value = l ? (l[k] ?? '') : ''; });
+    if (!l) { F('kans').value = 'B'; F('status').value = filter || 'prospect'; F('datum').value = today(); }
+    if (l && !STATUS[l.status]) F('status').value = 'prospect';
+    F('aantal').value = l ? (l.aantal ?? 0) : 0;
+    F('waarde').value = l ? (l.waarde || '') : '';
+    waardeTouched = !!(l && l.waarde);
+    $('f-del').hidden = !l; delArmed = false; $('f-del').textContent = 'Verwijderen'; $('f-err').textContent = '';
+    toggleReden(); $('dlg').showModal(); F('bedrijf').focus();
+  }
+  F('status').onchange = toggleReden;
+  F('aantal').oninput = () => { if (!waardeTouched) F('waarde').value = Math.max(0, +F('aantal').value || 0) * PRICE || ''; };
+  F('waarde').oninput = () => { waardeTouched = true; };
+  $('add').onclick = () => openForm(null);
+  $('f-cancel').onclick = () => $('dlg').close();
+  $('f-save').onclick = async () => {
+    const bedrijf = F('bedrijf').value.trim();
+    if (!bedrijf) { $('f-err').textContent = 'Vul een bedrijfsnaam in.'; F('bedrijf').focus(); return; }
+    const data = {};
+    FIELDS.forEach(k => { data[k] = (F(k).value || '').trim(); });
+    data.bedrijf = bedrijf; data.datum = data.datum || today();
+    if (data.status !== 'verloren') data.reden = '';
+    data.aantal = Math.max(0, parseInt(F('aantal').value, 10) || 0);
+    data.waarde = Math.max(0, parseFloat(F('waarde').value) || 0);
+    data.aanpak = editing?.aanpak || '';
+    data.createdAt = editing?.createdAt || new Date().toISOString(); data.updatedAt = new Date().toISOString();
+    $('f-save').disabled = true;
+    try { await saveLead(editing?.id, data); $('dlg').close(); }
+    catch (e) { $('f-err').textContent = 'Opslaan mislukt: ' + (e && (e.message || e.code) || 'onbekende fout'); }
+    finally { $('f-save').disabled = false; }
+  };
+  $('f-del').onclick = async () => {
+    if (!editing) return;
+    if (!delArmed) { delArmed = true; $('f-del').textContent = 'Klik nogmaals om te verwijderen'; return; }
+    try { await removeLead(editing.id); $('dlg').close(); }
+    catch (e) { $('f-err').textContent = 'Verwijderen mislukt: ' + (e && (e.message || e.code) || 'onbekende fout'); }
+  };
+
+  // ---------- Excel-import ----------
+  const STATUS_MAP = { 'nieuw': 'prospect', 'prospect': 'prospect', 'benaderd': 'benaderd', 'geïnteresseerd': 'interesse', 'geinteresseerd': 'interesse',
+    'offerte uitgebracht': 'offerte', 'offerte': 'offerte', 'offerte gewonnen': 'gewonnen', 'gewonnen': 'gewonnen', 'offerte verloren': 'verloren', 'verloren': 'verloren', 'geen interesse': 'verloren' };
+  const norm = s => String(s || '').trim().toLowerCase();
+  $('importBtn').onclick = () => { if (!window.XLSX) { banner('De Excel-lezer kon niet worden geladen. Probeer het later opnieuw.'); return; } $('importFile').click(); };
+  $('importFile').onchange = async e => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    try {
+      const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
+      const ws = wb.Sheets['Leads'] || wb.Sheets[wb.SheetNames[0]];
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      const head = {};
+      for (let c = range.s.c; c <= range.e.c; c++) { const cell = ws[XLSX.utils.encode_cell({ r: range.s.r, c })]; if (cell) head[norm(cell.v)] = c; }
+      if (head['bedrijf'] == null) { banner('Geen kolom "Bedrijf" gevonden. Gebruik de MEK-leadlijst (tabblad "Leads").'); return; }
+      const val = (r, name) => { const c = head[name]; if (c == null) return ''; const cell = ws[XLSX.utils.encode_cell({ r, c })]; if (!cell) return ''; return cell.l && cell.l.Target ? cell.l.Target : (cell.v instanceof Date ? cell.v.toISOString().slice(0, 10) : String(cell.v).trim()); };
+      const txt = (r, name) => { const c = head[name]; if (c == null) return ''; const cell = ws[XLSX.utils.encode_cell({ r, c })]; return cell ? (cell.v instanceof Date ? cell.v.toISOString().slice(0, 10) : String(cell.v).trim()) : ''; };
+      const key = (b, p) => norm(b) + '|' + norm(p).replace(/\s/g, '');
+      const existing = new Set(leads.map(l => key(l.bedrijf, (l.plaats || '').slice(0, 7))));
+      const rows = [];
+      for (let r = range.s.r + 1; r <= range.e.r; r++) {
+        const bedrijf = txt(r, 'bedrijf'); if (!bedrijf) continue;
+        const pc = txt(r, 'postcode'), pl = txt(r, 'plaats');
+        const plaats = [pc, pl].filter(Boolean).join(' ');
+        if (existing.has(key(bedrijf, pc))) continue;
+        existing.add(key(bedrijf, pc));
+        const kans = txt(r, 'kans').toUpperCase();
+        const st = STATUS_MAP[norm(txt(r, 'status'))] || 'prospect';
+        rows.push({
+          bedrijf, kans: ['A', 'B', 'C'].includes(kans) ? kans : '', segment: txt(r, 'segment'), adres: txt(r, 'adres'), plaats,
+          contact: txt(r, 'contactpersoon'), functie: txt(r, 'functie'), tel: txt(r, 'telefoon'), email: txt(r, 'e-mail'),
+          web: val(r, 'website'), maps: val(r, 'google maps'), status: st, datum: txt(r, 'laatste contact') || today(),
+          volgende: txt(r, 'volgende actie'), reden: norm(txt(r, 'status')) === 'geen interesse' ? 'Geen interesse' : '',
+          waarom: txt(r, 'waarom interessant'), aanpak: txt(r, 'aanpak'), notitie: txt(r, 'notities'), familie: ({ 'ja': 'ja', 'groot': 'groot', 'nee': 'nee', 'ja, groot': 'groot' })[norm(txt(r, 'familiebedrijf'))] || '',
+          aantal: 0, waarde: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        });
+      }
+      if (!rows.length) { banner('Geen nieuwe bedrijven gevonden in dit bestand: alles staat al in het dashboard.', true); return; }
+      $('importBtn').disabled = true;
+      let done = 0;
+      for (const row of rows) { await saveLead(null, row); done++; banner(`Importeren… ${done} van ${rows.length}`, true); }
+      banner(`${rows.length} nieuwe leads geïmporteerd uit ${file.name}.`, true);
+    } catch (err) {
+      banner('Importeren mislukt: ' + (err && (err.message || err.code) || 'onbekende fout'));
+    } finally { $('importBtn').disabled = false; }
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>

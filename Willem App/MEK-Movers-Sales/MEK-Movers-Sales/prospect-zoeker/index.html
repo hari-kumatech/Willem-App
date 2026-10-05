@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEK prospect-zoeker</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e2038; --card: #142c4a; --card-2: #1a3558; --text: #f4f6f8; --soft: #93a6bf;
+    --accent: #d6483d; --accent-soft: rgba(214,72,61,0.14); --border: rgba(147,166,191,0.22);
+    --a: #5fb885; --b: #e8b04a; --c: #93a6bf;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-family: 'Oswald', sans-serif; font-weight: 700; font-style: italic; text-transform: uppercase; transform: skewX(-6deg); transform-origin: left; display: inline-block; font-size: 1.8rem; margin: 0; }
+  .sub { color: var(--soft); margin: 6px 0 22px; font-size: 0.92rem; max-width: 70ch; line-height: 1.5; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .f { display: flex; flex-direction: column; gap: 6px; }
+  .f label { font-size: 0.8rem; color: var(--soft); }
+  input, select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 9px; padding: 10px 12px; font-size: 0.95rem; font-family: inherit; }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  #pc { width: 140px; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.04em; }
+  .btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 11px 20px; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--soft); border: 1px solid var(--border); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .chip { border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px; font-size: 0.8rem; color: var(--soft); background: transparent; cursor: pointer; font-family: inherit; }
+  .chip.on { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+  .status { font-size: 0.86rem; color: var(--soft); margin-top: 10px; min-height: 1.3em; }
+  .status.err { color: #ff8a80; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 16px; min-width: 120px; }
+  .stat b { display: block; font-family: 'Oswald', sans-serif; font-size: 1.6rem; }
+  .stat span { font-size: 0.78rem; color: var(--soft); }
+  .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .tools .grow { flex: 1; }
+  .tbl { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 900px; }
+  th { text-align: left; color: var(--soft); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; padding: 11px 12px; border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td .n { font-weight: 600; }
+  td .a { color: var(--soft); font-size: 0.8rem; margin-top: 2px; }
+  td a { color: var(--text); }
+  .score { display: inline-block; min-width: 26px; text-align: center; border-radius: 6px; padding: 2px 8px; font-weight: 700; font-family: 'Oswald', sans-serif; }
+  .score.A { background: rgba(95,184,133,0.18); color: var(--a); }
+  .score.B { background: rgba(232,176,74,0.18); color: var(--b); }
+  .score.C { background: rgba(147,166,191,0.15); color: var(--c); }
+  .muted { color: var(--soft); }
+  details { margin-top: 12px; font-size: 0.86rem; color: var(--soft); }
+  details summary { cursor: pointer; color: var(--text); }
+  details ol { line-height: 1.6; padding-left: 20px; }
+  .attr { font-size: 0.75rem; color: var(--soft); margin-top: 10px; }
+  .empty { text-align: center; padding: 40px; color: var(--soft); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Prospect-zoeker</h1>
+  <p class="sub">Vul een postcode in en vind automatisch logistieke bedrijven, distributiecentra, warehouses en crossdocks in de omgeving, via Google Maps. Exporteer de lijst naar Excel voor je opvolging.</p>
+
+  <div class="card" id="keycard">
+    <div class="row">
+      <div class="f" style="flex: 1; min-width: 260px">
+        <label for="key">Google Maps API-sleutel</label>
+        <input id="key" type="password" placeholder="AIza…" autocomplete="off">
+      </div>
+      <button class="btn ghost" id="savekey">Sleutel opslaan</button>
+    </div>
+    <details>
+      <summary>Hoe kom ik aan een API-sleutel?</summary>
+      <ol>
+        <li>Ga naar console.cloud.google.com en maak een project aan, bijvoorbeeld "MEK prospects".</li>
+        <li>Koppel een factuuraccount. Google geeft maandelijks gratis tegoed; een zoekactie kost hierboven enkele centen.</li>
+        <li>Zet onder "API's en services" twee API's aan: <b>Maps JavaScript API</b> en <b>Places API (New)</b>.</li>
+        <li>Maak onder "Inloggegevens" een API-sleutel aan en plak die hierboven. De sleutel wordt alleen op deze computer bewaard.</li>
+        <li>Tip: beperk de sleutel in Google Cloud tot deze twee API's en stel een dagelijks gebruikslimiet in.</li>
+      </ol>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div class="f"><label for="pc">Postcode</label><input id="pc" placeholder="5705 CL" maxlength="7"></div>
+      <div class="f"><label for="radius">Straal</label>
+        <select id="radius"><option value="5">5 km</option><option value="10" selected>10 km</option><option value="20">20 km</option><option value="30">30 km</option></select>
+      </div>
+      <button class="btn" id="go">Zoek bedrijven</button>
+    </div>
+    <div class="chips" id="terms"></div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div id="results" hidden>
+    <div class="stats" id="stats"></div>
+    <div class="tools">
+      <input id="filter" type="search" placeholder="Filter op naam of adres" style="width: 240px">
+      <label class="muted" style="font-size: 0.85rem"><input type="checkbox" id="hideStorage" checked> Self-storage en uitzendbureaus verbergen</label>
+      <span class="grow"></span>
+      <button class="btn ghost" id="csv">Exporteer naar Excel (CSV)</button>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr>
+        <th data-k="score">Score</th><th data-k="name">Bedrijf</th><th data-k="segment">Segment</th>
+        <th data-k="dist">Afstand</th><th data-k="reviews">Reviews</th><th>Contact</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table></div>
+    <div class="attr">Bedrijfsgegevens: Google Maps. De score is een indicatie op basis van segment en het aantal Google-reviews (veel reviews betekent vaak veel vrachtwagenbezoek); controleer altijd zelf.</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const TERMS = ['logistiek', 'distributiecentrum', 'warehouse', 'crossdock', 'transportbedrijf', 'opslag en distributie', 'expeditie', 'fulfilment'];
+  const active = new Set(TERMS.slice(0, 6));
+  const EXCLUDE = /self ?storage|opslagruimte huren|opslagbox|uitzendbureau|uitzend|verhuis|koeriers? ?dienst particulier|parkeer/i;
+  let results = [], sortKey = 'score', sortDir = -1, mapsLoaded = null;
+
+  // ---------- zoektermen ----------
+  TERMS.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (active.has(t) ? ' on' : ''); b.textContent = t; b.type = 'button';
+    b.setAttribute('aria-pressed', active.has(t));
+    b.onclick = () => { active.has(t) ? active.delete(t) : active.add(t); b.classList.toggle('on'); b.setAttribute('aria-pressed', active.has(t)); };
+    $('terms').appendChild(b);
+  });
+
+  // ---------- sleutel ----------
+  try { const k = localStorage.getItem('mek_maps_key'); if (k) { $('key').value = k; $('keycard').querySelector('details').open = false; } } catch (e) {}
+  $('savekey').onclick = () => { try { localStorage.setItem('mek_maps_key', $('key').value.trim()); status('Sleutel opgeslagen op deze computer.'); } catch (e) { status('Opslaan lukt niet in deze browser; de sleutel werkt wel voor deze sessie.'); } };
+
+  function status(msg, err) { const s = $('status'); s.textContent = msg; s.className = 'status' + (err ? ' err' : ''); }
+
+  function loadMaps(key) {
+    if (mapsLoaded) return mapsLoaded;
+    mapsLoaded = new Promise((resolve, reject) => {
+      window.__mekMapsReady = () => resolve();
+      window.gm_authFailure = () => reject(new Error('De API-sleutel wordt door Google geweigerd. Controleer de sleutel en of de Maps JavaScript API en Places API (New) aan staan.'));
+      const s = document.createElement('script');
+      s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&v=weekly&libraries=places&language=nl&region=NL&loading=async&callback=__mekMapsReady';
+      s.async = true; s.onerror = () => reject(new Error('Google Maps kon niet worden geladen. Controleer je internetverbinding.'));
+      document.head.appendChild(s);
+    });
+    mapsLoaded.catch(() => { mapsLoaded = null; });
+    return mapsLoaded;
+  }
+
+  // ---------- postcode → locatie (PDOK, gratis) ----------
+  async function geocode(pc) {
+    const q = pc.replace(/\s+/g, '').toUpperCase();
+    const url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?rows=1&q=' + encodeURIComponent(q) + '&fq=type:(postcode OR woonplaats)';
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('Postcode opzoeken mislukt (PDOK).');
+    const d = await r.json();
+    const doc = d.response && d.response.docs && d.response.docs[0];
+    if (!doc || !doc.centroide_ll) throw new Error('Postcode niet gevonden. Probeer bijvoorbeeld 5705 of 5705CL.');
+    const m = doc.centroide_ll.match(/POINT\(([-\d.]+) ([-\d.]+)\)/);
+    return { lat: +m[2], lng: +m[1], plaats: doc.woonplaatsnaam || doc.weergavenaam };
+  }
+
+  function bounds(c, km) {
+    const dLat = km / 111.32, dLng = km / (111.32 * Math.cos(c.lat * Math.PI / 180));
+    return { south: c.lat - dLat, west: c.lng - dLng, north: c.lat + dLat, east: c.lng + dLng };
+  }
+  function distKm(a, b) {
+    const R = 6371, toR = x => x * Math.PI / 180;
+    const dLat = toR(b.lat - a.lat), dLng = toR(b.lng - a.lng);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function segmentOf(name, types) {
+    const n = name.toLowerCase();
+    if (/crossdock|cross-dock|hub/.test(n)) return 'Crossdock / hub';
+    if (/distributie|distribution|\bdc\b/.test(n)) return 'Distributiecentrum';
+    if (/warehous|opslag|storage|fulfil/.test(n) || types.includes('storage')) return 'Warehouse / opslag';
+    if (/logist/.test(n)) return 'Logistiek dienstverlener';
+    if (/transport|expeditie|cargo|freight|trucking/.test(n) || types.includes('transportation_service') || types.includes('shipping_service')) return 'Transport';
+    return 'Overig';
+  }
+  function scoreOf(r) {
+    let pts = 0;
+    if (['Crossdock / hub', 'Distributiecentrum', 'Logistiek dienstverlener', 'Warehouse / opslag'].includes(r.segment)) pts += 2;
+    else if (r.segment === 'Transport') pts += 1;
+    if (r.reviews >= 100) pts += 2; else if (r.reviews >= 20) pts += 1;
+    return pts >= 4 ? 'A' : pts >= 2 ? 'B' : 'C';
+  }
+
+  // ---------- zoeken ----------
+  $('go').onclick = run;
+  $('pc').addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+
+  async function run() {
+    const key = $('key').value.trim();
+    const pc = $('pc').value.trim();
+    if (!key) { status('Vul eerst je Google Maps API-sleutel in.', true); $('key').focus(); return; }
+    if (!/^\d{4}\s?[a-zA-Z]{0,2}$/.test(pc)) { status('Vul een geldige postcode in, bijvoorbeeld 5705 of 5705 CL.', true); $('pc').focus(); return; }
+    if (!active.size) { status('Kies minimaal één zoekterm.', true); return; }
+    $('go').disabled = true;
+    try {
+      status('Postcode opzoeken…');
+      const c = await geocode(pc);
+      status('Google Maps laden…');
+      await loadMaps(key);
+      const { Place } = await google.maps.importLibrary('places');
+      const km = +$('radius').value, box = bounds(c, km);
+      const found = new Map(); let i = 0;
+      for (const term of active) {
+        i++; status(`Zoeken: "${term}" (${i}/${active.size})…`);
+        const { places } = await Place.searchText({
+          textQuery: `${term} ${c.plaats || ''}`.trim(),
+          fields: ['id', 'displayName', 'formattedAddress', 'location', 'websiteURI', 'nationalPhoneNumber', 'types', 'userRatingCount', 'googleMapsURI', 'businessStatus'],
+          locationRestriction: box, language: 'nl', region: 'nl', maxResultCount: 20,
+        });
+        (places || []).forEach(p => {
+          if (found.has(p.id) || p.businessStatus === 'CLOSED_PERMANENTLY') return;
+          const loc = { lat: p.location.lat(), lng: p.location.lng() };
+          const d = distKm(c, loc);
+          if (d > km) return;
+          const r = { id: p.id, name: p.displayName || '', address: p.formattedAddress || '', web: p.websiteURI || '', phone: p.nationalPhoneNumber || '',
+            maps: p.googleMapsURI || '', types: p.types || [], reviews: p.userRatingCount || 0, dist: d, terms: [term] };
+          r.segment = segmentOf(r.name, r.types); r.score = scoreOf(r);
+          found.set(p.id, r);
+        });
+      }
+      results = [...found.values()];
+      status(`${results.length} bedrijven gevonden rond ${pc.toUpperCase()}${c.plaats ? ' (' + c.plaats + ')' : ''}.`);
+      $('results').hidden = false; render();
+    } catch (e) {
+      status(e && e.message ? e.message : 'Er ging iets mis bij het zoeken.', true);
+    } finally { $('go').disabled = false; }
+  }
+
+  // ---------- weergave ----------
+  function visible() {
+    const q = $('filter').value.trim().toLowerCase(), hide = $('hideStorage').checked;
+    const order = { A: 3, B: 2, C: 1 };
+    return results
+      .filter(r => !hide || !EXCLUDE.test(r.name))
+      .filter(r => !q || (r.name + ' ' + r.address).toLowerCase().includes(q))
+      .sort((a, b) => {
+        let va = a[sortKey], vb = b[sortKey];
+        if (sortKey === 'score') { va = order[va] * 1000 + a.reviews; vb = order[vb] * 1000 + b.reviews; }
+        if (typeof va === 'string') return va.localeCompare(vb, 'nl') * sortDir;
+        return (va - vb) * sortDir;
+      });
+  }
+  function render() {
+    const list = visible();
+    const cnt = k => list.filter(r => r.score === k).length;
+    $('stats').innerHTML = '';
+    [['Totaal', list.length], ['A-prospects', cnt('A')], ['B-prospects', cnt('B')], ['C-prospects', cnt('C')]].forEach(([l, v]) => {
+      const d = document.createElement('div'); d.className = 'stat';
+      d.innerHTML = '<b></b><span></span>'; d.querySelector('b').textContent = v; d.querySelector('span').textContent = l;
+      $('stats').appendChild(d);
+    });
+    const tb = $('rows'); tb.innerHTML = '';
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">Geen bedrijven gevonden. Vergroot de straal of kies andere zoektermen.</td></tr>'; return; }
+    list.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><span class="score ${r.score}"></span></td><td><div class="n"></div><div class="a"></div></td><td></td><td></td><td></td><td></td>`;
+      tr.querySelector('.score').textContent = r.score;
+      tr.querySelector('.n').textContent = r.name;
+      tr.querySelector('.a').textContent = r.address;
+      const tds = tr.querySelectorAll('td');
+      tds[2].textContent = r.segment;
+      tds[3].textContent = r.dist.toFixed(1).replace('.', ',') + ' km';
+      tds[4].textContent = r.reviews;
+      const c = tds[5];
+      if (r.phone) { const a = document.createElement('a'); a.href = 'tel:' + r.phone.replace(/\s/g, ''); a.textContent = r.phone; c.appendChild(a); c.appendChild(document.createElement('br')); }
+      if (r.web) { const a = document.createElement('a'); a.href = r.web; a.target = '_blank'; a.rel = 'noopener'; a.textContent = r.web.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''); c.appendChild(a); c.appendChild(document.createElement('br')); }
+      if (r.maps) { const a = document.createElement('a'); a.href = r.maps; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Google Maps'; a.className = 'muted'; c.appendChild(a); }
+      tb.appendChild(tr);
+    });
+  }
+  document.querySelectorAll('th[data-k]').forEach(th => th.onclick = () => {
+    const k = th.dataset.k; if (sortKey === k) sortDir *= -1; else { sortKey = k; sortDir = (k === 'name' || k === 'segment' || k === 'dist') ? 1 : -1; } render();
+  });
+  $('filter').addEventListener('input', render);
+  $('hideStorage').addEventListener('change', render);
+
+  // ---------- export ----------
+  $('csv').onclick = () => {
+    const list = visible();
+    const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const head = ['Score', 'Bedrijf', 'Adres', 'Segment', 'Afstand (km)', 'Google-reviews', 'Telefoon', 'Website', 'Google Maps'];
+    const lines = [head.map(esc).join(';')].concat(list.map(r => [r.score, r.name, r.address, r.segment, r.dist.toFixed(1).replace('.', ','), r.reviews, r.phone, r.web, r.maps].map(esc).join(';')));
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'MEK-prospects-' + $('pc').value.replace(/\s/g, '').toUpperCase() + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+})();
+</script>
+</body>
+</html>

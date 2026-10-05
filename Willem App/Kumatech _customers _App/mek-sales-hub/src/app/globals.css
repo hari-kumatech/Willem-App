@@ -1,0 +1,190 @@
+@import "tailwindcss";
+
+/* MEK house style (spec A.7), now with a real light theme next to the dark one (B.12). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root,
+[data-theme="dark"] {
+  --bg: #0e2038;
+  --card: #142c4a;
+  --card-2: #1a3558;
+  --line: #24436b;
+  --ink: #f4f6f8;
+  --soft: #93a6bf;
+  --accent: #d6483d;
+  --accent-ink: #ffffff;
+  --positive: #5fb885;
+  --warning: #e8b04a;
+  --info: #6aa6e8;
+  --input: #0f2440;
+  --shadow: 0 1px 0 rgb(0 0 0 / 0.25), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #eef2f6;
+  --card: #ffffff;
+  --card-2: #f4f6f9;
+  --line: #d6dee8;
+  --ink: #0e2038;
+  --soft: #51647d;
+  --accent: #c53e33;
+  --accent-ink: #ffffff;
+  --positive: #2f8a57;
+  --warning: #b07a12;
+  --info: #2c6db5;
+  --input: #ffffff;
+  --shadow: 0 1px 0 rgb(14 32 56 / 0.06), 0 8px 24px -16px rgb(14 32 56 / 0.25);
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-card-2: var(--card-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-soft: var(--soft);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-input: var(--input);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-oswald), "Oswald", "Arial Narrow", sans-serif;
+  --shadow-card: var(--shadow);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Oswald headings: uppercase, italic, skewed (A.7) */
+.mek-heading {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  font-weight: 600;
+}
+
+.mek-skew {
+  display: inline-block;
+  transform: skewX(-6deg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Components live in a layer so Tailwind utilities (w-auto, py-1 …) can override them */
+@layer components {
+/* Form controls */
+.field {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--input);
+  color: var(--ink);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.field:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: transparent;
+}
+.field::placeholder {
+  color: var(--soft);
+  opacity: 0.8;
+}
+select.field {
+  padding-right: 2rem;
+}
+.label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--soft);
+  margin-bottom: 0.25rem;
+}
+
+input[type="range"] {
+  accent-color: var(--accent);
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+/* Tables */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+table.data th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  background: var(--card);
+  position: sticky;
+  top: 0;
+}
+table.data td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+table.data tbody tr:hover {
+  background: color-mix(in srgb, var(--card-2) 70%, transparent);
+}
+
+}
+
+dialog::backdrop {
+  background: rgb(5 12 24 / 0.6);
+  backdrop-filter: blur(2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Presentation mode hides internal figures (margins, scores, notes) in front of a customer (B.2) */
+[data-presentation="on"] .internal-only {
+  display: none !important;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

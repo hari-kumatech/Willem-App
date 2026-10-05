@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mek-Rider in 3D</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛻</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="app" id="app">
+  <div class="bar">
+    <h1>Mek-Rider in 3D</h1>
+    <div class="tabs" role="tablist" aria-label="Weergave">
+      <button class="tab" role="tab" id="tabProd" aria-selected="true">Product</button>
+      <button class="tab" role="tab" id="tabDock" aria-selected="false">Crossdock: 1 rit tegen 2</button>
+    </div>
+    <span class="spacer"></span>
+    <button class="btn ghost" id="recBtn" title="Verbergt knoppen en panelen, zodat je een strakke schermopname kunt maken">Opnamemodus</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" aria-label="3D-weergave van de Mek-Rider"></canvas>
+    <div id="tags"></div>
+    <div class="caption" id="caption" aria-live="polite"></div>
+
+    <!-- product -->
+    <div class="hud tl" id="prodHud">
+      <div class="panel readout">
+        <div class="lbl">Lepellengte</div>
+        <div class="big" id="lenOut">1.198<small>mm</small></div>
+        <div class="meter"><div id="lenBar"></div></div>
+        <div class="chips"><span>1 of 2 pallets per rit</span><span>2.000 kg</span><span>Uitschuiven in 4 sec</span><span>785 mm breed</span></div>
+      </div>
+    </div>
+    <div class="hud bl" id="prodCtl">
+      <button class="btn" id="extBtn">Lepels uitschuiven</button>
+      <span class="lbl">Lading</span>
+      <div class="seg" id="palSeg">
+        <button data-n="0" aria-pressed="false">Leeg</button>
+        <button data-n="1" aria-pressed="true">1 pallet</button>
+        <button data-n="2" aria-pressed="false">2 pallets</button>
+      </div>
+      <button class="btn ghost" id="rotBtn" aria-pressed="true">Draaien: aan</button>
+      <span class="note">Sleep om rond te kijken, scroll of knijp om te zoomen.</span>
+    </div>
+
+    <!-- crossdock -->
+    <div class="hud tl" id="dockHud" hidden>
+      <div class="panel lane" style="--c: #93a6bf">
+        <div class="nm"><i></i>Standaard EPT</div>
+        <dl><dt>Ritten</dt><dt>Tijd</dt><dt>Afstand</dt><dd id="e-r">0</dd><dd id="e-t">0,0 s</dd><dd id="e-d">0 m</dd></dl>
+        <div class="st" id="e-s">Klaar om te starten</div>
+      </div>
+      <div class="panel lane" style="--c: #d6483d">
+        <div class="nm"><i></i>Mek-Rider</div>
+        <dl><dt>Ritten</dt><dt>Tijd</dt><dt>Afstand</dt><dd id="m-r">0</dd><dd id="m-t">0,0 s</dd><dd id="m-d">0 m</dd></dl>
+        <div class="st" id="m-s">Klaar om te starten</div>
+      </div>
+    </div>
+    <div class="hud bl" id="dockCtl" hidden>
+      <button class="btn" id="playBtn">Start</button>
+      <button class="btn ghost" id="resetBtn">Opnieuw</button>
+      <span class="lbl">Snelheid</span>
+      <div class="seg" id="spdSeg">
+        <button data-s="1" aria-pressed="true">1×</button>
+        <button data-s="2" aria-pressed="false">2×</button>
+        <button data-s="4" aria-pressed="false">4×</button>
+      </div>
+      <span class="note">Opdracht: 2 pallets van het inkomende dock naar losplek A en B. Rijsnelheid 12 km/u leeg, 10 km/u met last.</span>
+    </div>
+    <div class="panel result" id="result" role="status">
+      <h2>Zelfde klus, minder ritten</h2>
+      <div class="cols">
+        <div><span class="lbl">Standaard EPT</span><b id="r-e">–</b><span class="lbl" id="r-e2"></span></div>
+        <div class="m"><span class="lbl">Mek-Rider</span><b id="r-m">–</b><span class="lbl" id="r-m2"></span></div>
+      </div>
+      <p id="r-txt"></p>
+      <button class="btn" id="againBtn">Nog een keer</button>
+    </div>
+
+    <button class="btn ghost exitRec" id="exitRec">Opnamemodus uit</button>
+    <div class="err" id="err">De 3D-weergave kon niet worden geladen. Probeer een andere browser of zet hardwareversnelling aan.</div>
+  </div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "name": "mek-rider-3d",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Interactieve 3D-animatie van de MEK-Rider MRTF01: productweergave en crossdock-vergelijking met een standaard EPT.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:single": "vite build --mode single",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "0.128.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0",
+    "vite-plugin-singlefile": "^2.0.0"
+  }
+}

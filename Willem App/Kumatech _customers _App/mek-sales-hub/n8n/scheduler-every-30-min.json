@@ -1,0 +1,90 @@
+{
+  "id": "mekScheduler0001",
+  "name": "MEK · Scheduler (every 30 min)",
+  "active": true,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000041",
+      "name": "Every 30 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000042",
+      "name": "Run due profiles",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/n8n/scheduler",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 280000
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mekOutboundAuth1",
+          "name": "n8n → MEK app (Bearer)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000044",
+      "name": "Note 0043",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        60
+      ],
+      "parameters": {
+        "content": "## Scheduler\nEvery 30 min: the app starts every active profile that is due and has budget left, closes runs without callback for 30 min, and purges old data.",
+        "width": 420,
+        "height": 180
+      }
+    }
+  ],
+  "connections": {
+    "Every 30 minutes": {
+      "main": [
+        [
+          {
+            "node": "Run due profiles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "timezone": "Europe/Amsterdam"
+  },
+  "pinData": {}
+}
