@@ -1,6 +1,6 @@
 #!/bin/sh
-# Registers new or removed folders in incremental_features/ before every commit and stages the updated log
-# (see incremental_features/README.md). Switch on once per clone: git config core.hooksPath .githooks
+# Registers new or removed folders in features/ before every commit and stages the updated log
+# (see features/README.md). Switch on once per clone: git config core.hooksPath .githooks
 command -v node >/dev/null 2>&1 || { echo "pre-commit: node not found, feature folders not registered"; exit 0; }
 node tools/track-features.mjs || exit 1
-git add -- CHANGELOG.md incremental_features/README.md incremental_features/registry.json
+git add -- CHANGELOG.md features/README.md features/registry.json

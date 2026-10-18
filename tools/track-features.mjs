@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Keeps incremental_features/ and CHANGELOG.md in sync.
+// Keeps features/ and CHANGELOG.md in sync.
 //
-// Every top-level folder in incremental_features/ is one feature. When a new folder appears it gets the next
-// INC number, an entry in CHANGELOG.md and a row in the index (incremental_features/README.md). When a folder
+// Every top-level folder in features/ is one feature. When a new folder appears it gets the next
+// INC number, an entry in CHANGELOG.md and a row in the index (features/README.md). When a folder
 // disappears it is marked "removed" and logged; if it comes back it is registered again under a new number.
 //
 //   node tools/track-features.mjs            scan once and update the files
@@ -16,7 +16,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const FEATURES = join(ROOT, 'incremental_features');
+const FEATURES = join(ROOT, 'features');
 const REGISTRY = join(FEATURES, 'registry.json');
 const INDEX = join(FEATURES, 'README.md');
 const CHANGELOG = join(ROOT, 'CHANGELOG.md');
@@ -101,13 +101,13 @@ function nextId(registry, changelog) {
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 
 function changelogEntry(kind, f, extra = '') {
-  const link = `[incremental_features/${f.folder}](incremental_features/${encodeURI(f.folder)}/)`;
+  const link = `[features/${f.folder}](features/${encodeURI(f.folder)}/)`;
   if (kind === 'removed') {
     return [
       `### ${f.removedId} · ${f.removed} · Feature folder removed: ${f.title}`,
       '',
       `- **Type:** feature folder (registered automatically)`,
-      `- **Folder:** \`incremental_features/${f.folder}\` (added as ${f.id}, folder no longer exists)`,
+      `- **Folder:** \`features/${f.folder}\` (added as ${f.id}, folder no longer exists)`,
       '',
     ].join('\n');
   }
@@ -116,7 +116,7 @@ function changelogEntry(kind, f, extra = '') {
     '',
     `- **Type:** feature folder (registered automatically)`,
     `- **Folder:** ${link}`,
-    `- **Summary:** ${f.summary || '_No FEATURE.md or README.md yet: add one (see incremental_features/_TEMPLATE) and describe the feature here._'}`,
+    `- **Summary:** ${f.summary || '_No FEATURE.md or README.md yet: add one (see features/_TEMPLATE) and describe the feature here._'}`,
     ...(extra ? [`- **Note:** ${extra}`] : []),
     '',
   ].join('\n');
@@ -222,7 +222,7 @@ if (args.has('--check')) {
   });
 } else {
   if (!existsSync(FEATURES) || !statSync(FEATURES).isDirectory()) {
-    console.error('incremental_features/ not found next to tools/.');
+    console.error('features/ not found next to tools/.');
     process.exit(1);
   }
   report(sync({ write: true }));

@@ -4,6 +4,8 @@ One app for MEK sales of the Mek-Rider: leads pipeline, province overview, an ag
 (n8n + Apify + Claude), ROI calculator with numbered quotes and PDFs, the crossdock 2D / 3D demos, and the
 **MEK Movers** apps (company dashboard, besparingscalculator, besparingsvideo).
 Built from *MEK Sales Hub – Requirements and System Specification* (v0.1, 2 Oct 2026). Dutch and English UI.
+What is built, function by function: [docs/REQUIREMENTS.md](../docs/REQUIREMENTS.md). Adding a new or updated
+HTML app: [docs/ADDING-FEATURES.md](../docs/ADDING-FEATURES.md).
 
 Everything runs on this laptop: Next.js app, PostgreSQL + PostgREST in Docker, n8n in Docker. All free and open
 source; no Supabase account or CLI needed. Only Apify (scraping) and the Claude API run in the cloud.

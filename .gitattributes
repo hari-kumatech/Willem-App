@@ -1,3 +1,6 @@
 # Windows launchers need CRLF line endings, also when cloned on a machine with other git settings
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
+
+# Git hooks run in sh: keep LF
+.githooks/* text eol=lf

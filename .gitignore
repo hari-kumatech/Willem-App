@@ -1,6 +1,6 @@
 # Safety net for the whole repo. Each app also has its own .gitignore.
 # Everything ignored here is recreated on a fresh clone: npm install, .\start.ps1 (or npm run db:start)
-# and npm run n8n:setup. See "Willem App/Kumatech _customers _App/mek-sales-hub/README.md".
+# and npm run n8n:setup. See app/README.md.
 
 # Dependencies and build output (npm install / npm run build)
 node_modules/

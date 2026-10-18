@@ -4,7 +4,7 @@ One or two sentences: what this adds and for whom. This paragraph becomes the su
 
 - **Type:** app | feature | experiment | data | fix
 - **Status:** idea | in progress | working | merged into the main app
-- **Relates to:** e.g. MEK Sales Hub → Leads, or a requirement from REQUIREMENTS.md
+- **Relates to:** e.g. MEK Sales Hub → Leads, or a line in docs/REQUIREMENTS.md
 - **How to run:** e.g. `cd <folder> && npm start`
 
 ## What changed

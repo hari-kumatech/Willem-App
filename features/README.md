@@ -1,7 +1,10 @@
-# Incremental features
+# Features
 
-Drop each new feature, app version or experiment into this folder as **its own sub-folder**. It is registered
-automatically:
+Drop each new feature, app version, HTML file or data file into this folder as **its own sub-folder**, named
+`<date>-<what>` (for example `2026-10-25-dashboard-doelen`). To bring an HTML file into the app, follow
+[docs/ADDING-FEATURES.md](../docs/ADDING-FEATURES.md) (`node tools/install-html.mjs features/<folder>/<file>.html`).
+
+Each folder is registered automatically:
 
 1. The folder gets the next number (`INC-0NN`) in [registry.json](registry.json).
 2. An entry is added at the top of [CHANGELOG.md](../CHANGELOG.md).

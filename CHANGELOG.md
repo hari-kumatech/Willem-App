@@ -2,10 +2,10 @@
 
 Every change to the project gets a numbered entry here (`INC-001`, `INC-002`, …), newest first.
 
-- **New folder in `incremental_features/`** → the entry is written automatically by `tools/track-features.mjs`
+- **New folder in `features/`** → the entry is written automatically by `tools/track-features.mjs`
   (runs before every commit, or live with `node tools/track-features.mjs --watch`).
 - **Change to an existing app** (code, database, docs) → add an entry by hand at the top, with the next free number.
-  Use the format below and, when the change affects a requirement, update [REQUIREMENTS.md](REQUIREMENTS.md) too.
+  Use the format below and, when the change affects a requirement, tick or add it in [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) too.
 
 ```
 ### INC-0NN · YYYY-MM-DD · Short title
@@ -16,6 +16,32 @@ Every change to the project gets a numbered entry here (`INC-001`, `INC-002`, �
 ```
 
 <!-- new entries go below this line (newest first) -->
+
+### INC-009 · 2026-10-18 · Project restructured; one checked requirements file; tool for new HTML files
+
+- **Type:** infrastructure | docs
+- **Where:** whole project; new [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md), [docs/ADDING-FEATURES.md](docs/ADDING-FEATURES.md),
+  [tools/install-html.mjs](tools/install-html.mjs), `Start MEK Sales Hub.cmd`, `app/start.ps1`, `.gitignore`, `.gitattributes`
+- **What:** New layout. Earlier entries name the old paths; they map as follows:
+
+  | Old path | New path |
+  |---|---|
+  | `Willem App/Kumatech _customers _App/mek-sales-hub/` | `app/` |
+  | `incremental_features/` | `features/` |
+  | `Willem App/MEK-Movers-Sales/MEK-Movers-Sales/`, `mek-rider-3d/mek-rider-3d/`, `mek-rider-leads-nederland/mek-rider-leads-nederland/` | `reference/<name>/` |
+  | `Willem App/*.docx`, `Willem app requirements.xlsx` | `docs/specification/` |
+  | `REQUIREMENTS.md` + `mek-sales-hub/REQUIREMENTS_STATUS.md` | `docs/REQUIREMENTS.md` (one file) |
+
+  `docs/REQUIREMENTS.md` was checked against the code: every function of the Sales Hub and of the MEK Movers apps
+  is listed with `[x]` / `[ ]`. Corrections: stale runs close after 90 minutes (not 30), 51 unit tests (not 46),
+  sorting on every leads column except Contact, MEK Movers backup download for everyone with read access. Newly
+  listed as not built: 7 of the lead fields from *Willem app requirements.xlsx* (pallet movements, ROI, revenue,
+  employees, locations, crossdock yes/no as lead columns), invoice PDF, VAT on MEK Movers quotes, calculator prices
+  from Basisgegevens. `tools/install-html.mjs` installs a new or updated HTML file from `features/` into
+  `app/public/mek-movers/` with the changes it needs, and reports what still needs code. One-click start: double-click
+  `Start MEK Sales Hub.cmd` (browser opens; builds only when something changed).
+- **How to use / migrate:** nothing for the data (Docker volumes are unchanged). Close VS Code terminals that were
+  open in the old folder; the empty folder `Willem App/` can be deleted after a VS Code restart.
 
 ### INC-008 · 2026-10-18 · One leads list for the Sales Hub and MEK Movers
 
@@ -52,7 +78,7 @@ Every change to the project gets a numbered entry here (`INC-001`, `INC-002`, �
 
 - **Type:** feature
 - **Where:** `mek-sales-hub/src/instrumentation.ts`, `mek-sales-hub/src/modules/movers/backup.ts`
-- **What:** Checked every part of [incremental_features/mek-movers-apps](incremental_features/mek-movers-apps/) against the
+- **What:** Checked every part of [features/mek-movers-apps](features/mek-movers-apps/) against the
   Sales Hub. The pages, data, live updates, export and import were already in (INC-005); the one thing missing was
   the stand-alone server's automatic daily backup. The Sales Hub now writes `backups/mek-movers/db-YYYY-MM-DD.json`
   at start-up and checks every hour, keeping the last 30 days, exactly like `server.js` did.
@@ -64,7 +90,7 @@ Every change to the project gets a numbered entry here (`INC-001`, `INC-002`, �
 - **Where:** `mek-sales-hub/`: `public/mek-movers/` (the HTML apps), `src/app/(app)/mek-movers/` (page + API),
   `src/modules/movers/`, `db/migrations/20261019090000_mek_movers_documents.sql`, `scripts/mek-movers-seed.mts`,
   menu item in `src/components/layout/AppShell.tsx`
-- **What:** The apps from [incremental_features/mek-movers-apps](incremental_features/mek-movers-apps/) (INC-002) now run
+- **What:** The apps from [features/mek-movers-apps](features/mek-movers-apps/) (INC-002) now run
   inside the Sales Hub under the new menu item **MEK Movers**, with tabs Dashboard, Besparingscalculator,
   Besparingsvideo and Start & back-up, plus "open in full window". The HTML files are unchanged except the
   dashboard's hub link (now the Sales Hub). Their database moved from `db.json` to the table `mm_documents`, with the
@@ -77,7 +103,7 @@ Every change to the project gets a numbered entry here (`INC-001`, `INC-002`, �
 ### INC-004 · 2026-10-18 · Project structure, requirements overview and change tracking
 
 - **Type:** docs | infrastructure
-- **Where:** [README.md](README.md), [REQUIREMENTS.md](REQUIREMENTS.md), this file, [incremental_features/](incremental_features/),
+- **Where:** [README.md](README.md), REQUIREMENTS.md (now [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)), this file, [features/](features/),
   [tools/track-features.mjs](tools/track-features.mjs), [.githooks/pre-commit](.githooks/pre-commit), [CLAUDE.md](CLAUDE.md)
 - **What:** One place for the requirements and functions of every app, a numbered change log, and the
   `incremental_features/` folder (renamed from `incrmental_fetaures`), where each new sub-folder is registered
@@ -104,16 +130,16 @@ Every change to the project gets a numbered entry here (`INC-001`, `INC-002`, �
 ### INC-002 · 2026-10-18 · Feature folder added: MEK Movers – local version
 
 - **Type:** feature folder (registered automatically)
-- **Folder:** [incremental_features/mek-movers-apps](incremental_features/mek-movers-apps/)
+- **Folder:** [features/mek-movers-apps](features/mek-movers-apps/)
 - **Summary:** Everything from the MEK Movers dashboard on claude.ai, running on your own computer: Dashboard, Besparingscalculator, Besparingsvideo.
 
 ### INC-001 · 2026-10-05 · Baseline: MEK Sales Hub v0.1 and the original apps
 
 - **Type:** baseline
-- **Where:** [Willem App/](Willem%20App/)
+- **Where:** [app/](app/) and [reference/](reference/) (then `Willem App/`)
 - **What:** Starting point of this log. MEK Sales Hub (Next.js + Supabase + n8n + Apify + AI agents) built from
   *MEK Sales Hub – Requirements and System Specification* v0.1 (2 Oct 2026); status per requirement in
-  [REQUIREMENTS_STATUS.md](Willem%20App/Kumatech%20_customers%20_App/mek-sales-hub/REQUIREMENTS_STATUS.md).
+  REQUIREMENTS_STATUS.md (now merged into [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)).
   Original stand-alone apps kept for reference: MEK-Movers-Sales, mek-rider-3d, mek-rider-leads-nederland.
   Changes of 5 Oct: search depth, web sources (LinkedIn / news), maximum run time, Ollama provider, English
   assessment texts, per-area coverage cursors.
