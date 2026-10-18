@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { env, features } from '@/lib/env';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/db/admin';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/health — what is connected? Only yes/no and statuses, never secrets.
 export async function GET() {
   let database: 'ok' | 'missing-migrations' | 'error' | 'not-configured' = 'not-configured';
-  if (env.supabaseUrl && env.supabaseSecretKey) {
+  if (env.authJwtSecret) {
     try {
       const { error } = await createAdminClient().from('search_runs').select('id').limit(0);
       database = !error ? 'ok' : ['42P01', 'PGRST205'].includes(error.code) ? 'missing-migrations' : 'error';
@@ -17,8 +17,9 @@ export async function GET() {
   }
 
   const warnings: string[] = [];
-  if (database === 'not-configured') warnings.push('Zet NEXT_PUBLIC_SUPABASE_URL en SUPABASE_SECRET_KEY in .env.local.');
-  if (database === 'missing-migrations') warnings.push('Draai de migraties: npx supabase db reset.');
+  if (database === 'not-configured') warnings.push('AUTH_JWT_SECRET ontbreekt in .env.local: draai npm run db:start.');
+  if (database === 'missing-migrations') warnings.push('Draai de migraties: npm run db:migrate.');
+  if (database === 'error') warnings.push('Database niet bereikbaar: draai npm run db:start (Docker moet aan staan).');
   const usesN8n = Boolean(env.n8nDiscoveryWebhookUrl || env.n8nEnrichWebhookUrl || env.n8nSendEmailWebhookUrl);
   if (usesN8n && !env.n8nSecret) warnings.push('N8N_SECRET is leeg: n8n kan zich niet aanmelden.');
   if (env.n8nDiscoveryWebhookUrl && !env.n8nEnrichWebhookUrl) warnings.push('Geen N8N_ENRICH_WEBHOOK_URL: bedrijven worden alleen op hun vermelding beoordeeld.');

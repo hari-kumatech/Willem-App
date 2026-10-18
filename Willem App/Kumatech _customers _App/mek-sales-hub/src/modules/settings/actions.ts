@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { ForbiddenError, requireAdmin, requireWriter } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/db/server';
+import { createAdminClient } from '@/lib/db/admin';
+import { createUser, setPassword } from '@/lib/session';
 import { geocodePostcode } from '@/lib/geo';
 import { getMessages } from '@/i18n/server';
 import { common } from '@/i18n/messages/common';
@@ -68,8 +69,8 @@ export async function saveSetting(key: SettingsKey, value: unknown): Promise<Res
       const geo = await geocodePostcode(String(parsed.postcode));
       if (geo) parsed = { ...parsed, lat: geo.lat, lng: geo.lng, label: parsed.label || geo.city };
     }
-    const supabase = await createClient();
-    const { error } = await supabase.from('settings').upsert({ key, value: parsed, updated_at: new Date().toISOString(), updated_by: user.id });
+    const db = await createClient();
+    const { error } = await db.from('settings').upsert({ key, value: parsed, updated_at: new Date().toISOString(), updated_by: user.id });
     if (error) throw new Error(error.message);
     revalidatePath('/', 'layout');
     return { ok: true };
@@ -92,11 +93,10 @@ export async function addUser(input: z.input<typeof userSchema>): Promise<Result
   try {
     await requireAdmin();
     const data = userSchema.parse(input);
-    const { error } = await createAdminClient().auth.admin.createUser({
+    const { error } = await createUser({
       email: data.email,
       password: data.password,
-      email_confirm: true,
-      user_metadata: { name: data.name, role: data.role },
+      meta: { name: data.name, role: data.role },
     });
     if (error) return { ok: false, error: error.message };
     revalidatePath('/instellingen');
@@ -115,8 +115,8 @@ export async function setUserRole(userId: string, role: 'admin' | 'sales' | 'vie
       const { count } = await admin.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin').neq('id', userId);
       if (!count) return { ok: false, error: t.users.lastAdmin };
     }
-    const supabase = await createClient();
-    const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
+    const db = await createClient();
+    const { error } = await db.from('profiles').update({ role }).eq('id', userId);
     if (error) throw new Error(error.message);
     void me;
     revalidatePath('/instellingen');
@@ -130,7 +130,7 @@ export async function setUserPassword(userId: string, password: string): Promise
   try {
     await requireAdmin();
     z.string().min(8).max(72).parse(password);
-    const { error } = await createAdminClient().auth.admin.updateUserById(userId, { password });
+    const { error } = await setPassword(userId, password);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   } catch (error) {
@@ -146,8 +146,8 @@ export async function addDoNotContact(value: string): Promise<Result> {
     await requireWriter();
     const v = value.trim().toLowerCase().replace(/^mailto:/, '');
     if (!/^([^\s@]+@)?[a-z0-9.-]+\.[a-z]{2,}$/.test(v)) return { ok: false, error: (await getMessages(common)).genericError };
-    const supabase = await createClient();
-    await supabase.from('do_not_contact').upsert({ value: v }, { onConflict: 'value', ignoreDuplicates: true });
+    const db = await createClient();
+    await db.from('do_not_contact').upsert({ value: v }, { onConflict: 'value', ignoreDuplicates: true });
     revalidatePath('/instellingen');
     return { ok: true };
   } catch (error) {
@@ -158,8 +158,8 @@ export async function addDoNotContact(value: string): Promise<Result> {
 export async function removeDoNotContact(id: number): Promise<Result> {
   try {
     await requireWriter();
-    const supabase = await createClient();
-    await supabase.from('do_not_contact').delete().eq('id', id);
+    const db = await createClient();
+    await db.from('do_not_contact').delete().eq('id', id);
     revalidatePath('/instellingen');
     return { ok: true };
   } catch (error) {

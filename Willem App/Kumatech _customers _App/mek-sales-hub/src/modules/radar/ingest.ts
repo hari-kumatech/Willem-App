@@ -1,6 +1,6 @@
 import 'server-only';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { createAdminClient } from '@/lib/supabase/admin';
+import type { DbClient } from '@/lib/db';
+import { createAdminClient } from '@/lib/db/admin';
 import { env, features } from '@/lib/env';
 import { callN8nWebhook } from '@/lib/n8n';
 import { geocodePostcode, provinceFromPostcode, reverseGeocode } from '@/lib/geo';
@@ -38,19 +38,19 @@ export interface RunRow {
 }
 
 interface Ctx {
-  admin: SupabaseClient;
+  admin: DbClient;
   run: RunRow;
   filters: SearchFilters;
   settings: AppSettings;
 }
 
-async function bump(admin: SupabaseClient, runId: string, deltas: Record<string, number | boolean>): Promise<RunRow | null> {
+async function bump(admin: DbClient, runId: string, deltas: Record<string, number | boolean>): Promise<RunRow | null> {
   const { data, error } = await admin.rpc('bump_run', { p_run: runId, p_deltas: deltas });
   if (error) console.error('[ingest] bump_run failed', error.message);
   return (data as RunRow | null) ?? null;
 }
 
-export async function setStatus(admin: SupabaseClient, runId: string, status: string, error?: string | null) {
+export async function setStatus(admin: DbClient, runId: string, status: string, error?: string | null) {
   await admin.rpc('set_run_status', { p_run: runId, p_status: status, p_error: error ?? null });
 }
 
@@ -64,7 +64,7 @@ export async function failRun(runId: string, message: string) {
 }
 
 // When discovery is finished and no enrichment/qualification is pending, the run is done (or "budget reached")
-async function maybeFinish(admin: SupabaseClient, run: RunRow | null) {
+async function maybeFinish(admin: DbClient, run: RunRow | null) {
   if (!run || FINAL.has(run.status)) return;
   if (!run.discovery_done || run.pending_enrich > 0) return;
   await setStatus(admin, run.id, run.budget_hit ? 'budget_reached' : 'done');
@@ -139,7 +139,7 @@ interface ExistingCompany {
   qualified_at: string | null;
 }
 
-async function findExisting(admin: SupabaseClient, places: NormalisedPlace[]): Promise<ExistingCompany[]> {
+async function findExisting(admin: DbClient, places: NormalisedPlace[]): Promise<ExistingCompany[]> {
   const cols = 'id, place_id, domain, name_key, state, reviews, website, last_seen, qualified_at';
   const placeIds = [...new Set(places.map((p) => p.placeId).filter(Boolean))] as string[];
   const domains = [...new Set(places.map((p) => p.domain).filter(Boolean))] as string[];
@@ -218,7 +218,7 @@ interface WebLeadRow {
   term_key: string;
 }
 
-async function webLeadsFor(admin: SupabaseClient, runId: string, items: PlaceItem[]): Promise<Map<string, WebLeadRow>> {
+async function webLeadsFor(admin: DbClient, runId: string, items: PlaceItem[]): Promise<Map<string, WebLeadRow>> {
   const keys = [...new Set(items.map((i) => resolveKey(i.searchTerm)).filter(Boolean))];
   if (!keys.length) return new Map();
   const { data } = await admin.from('web_leads').select('id, source, name, name_norm, url, title, term_key').eq('run_id', runId).in('term_key', keys.slice(0, 300));
@@ -231,7 +231,7 @@ function sameCompany(lead: WebLeadRow, placeName: string): boolean {
   return lead.name_norm.split(' ').some((w) => w.length >= 3 && placeWords.has(w));
 }
 
-async function recountWeb(admin: SupabaseClient, runId: string) {
+async function recountWeb(admin: DbClient, runId: string) {
   const [found, resolved] = await Promise.all([
     admin.from('web_leads').select('id', { count: 'exact', head: true }).eq('run_id', runId),
     admin.from('web_leads').select('id', { count: 'exact', head: true }).eq('run_id', runId).eq('state', 'resolved'),
@@ -240,7 +240,7 @@ async function recountWeb(admin: SupabaseClient, runId: string) {
 }
 
 // The LinkedIn page or news article becomes a signal on the company (the Qualifier sees it as evidence)
-async function linkWebLeads(admin: SupabaseClient, runId: string, links: { companyId: string; lead: WebLeadRow }[]) {
+async function linkWebLeads(admin: DbClient, runId: string, links: { companyId: string; lead: WebLeadRow }[]) {
   if (!links.length) return;
   for (const { companyId, lead } of links) {
     const text = lead.source === 'linkedin' ? `LinkedIn-bedrijfspagina: ${lead.title || lead.name}` : `In het nieuws: ${lead.title || lead.name}`;

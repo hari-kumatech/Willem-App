@@ -6,7 +6,7 @@ import { DEFAULT_NEWS_SITES } from './web';
 export const filtersSchema = z.object({
   areaMode: z.enum(['radius', 'provinces', 'nl']).default('radius'),
   postcode: z.string().trim().default('5705'),
-  radiusKm: z.number().int().min(1).max(100).default(10),
+  radiusKm: z.number().int().min(1).max(300).default(10),
   provinces: z.array(z.string()).default(['Noord-Brabant']),
   terms: z.array(z.string().trim().min(2).max(60)).default(SEARCH_TERMS.slice(0, 6) as unknown as string[]),
   segments: z.array(z.enum(SEGMENTS)).default(SEGMENTS.filter((s) => s !== 'Overig') as unknown as (typeof SEGMENTS)[number][]),

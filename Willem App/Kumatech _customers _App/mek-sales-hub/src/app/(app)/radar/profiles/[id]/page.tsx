@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/ui';
 import { ProfileForm, type ProfileFormValue } from '@/components/radar/ProfileForm';
 import { canWrite, requireUser } from '@/lib/auth';
 import { env, features } from '@/lib/env';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { getMessages } from '@/i18n/server';
 import { radarMsg } from '@/i18n/messages/radar';
 import { parseFilters, parseSchedule } from '@/modules/radar/filters';
@@ -35,8 +35,8 @@ export default async function ProfilePage({ params }: PageProps<'/radar/profiles
     };
   } else {
     if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-    const supabase = await createClient();
-    const { data } = await supabase.from('search_profiles').select('*').eq('id', id).maybeSingle();
+    const db = await createClient();
+    const { data } = await db.from('search_profiles').select('*').eq('id', id).maybeSingle();
     if (!data) notFound();
     initial = {
       id: data.id,

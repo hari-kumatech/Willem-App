@@ -2,8 +2,8 @@
 
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/db/admin';
+import { createUser, signInWithPassword, signOut } from '@/lib/session';
 import { getMessages } from '@/i18n/server';
 import { common } from '@/i18n/messages/common';
 
@@ -17,15 +17,12 @@ export async function login(_prev: AuthState, form: FormData): Promise<AuthState
     .object({ email: z.string().trim().toLowerCase().email(t.invalidEmail), password: z.string().min(1, t.noPassword) })
     .safeParse({ email: form.get('email'), password: form.get('password') });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
-  if (error) return { error: t.wrong };
+  if (!(await signInWithPassword(parsed.data.email, parsed.data.password))) return { error: t.wrong };
   redirect('/overzicht');
 }
 
 export async function logout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await signOut();
   redirect('/login');
 }
 
@@ -46,15 +43,12 @@ export async function setupFirstAdmin(_prev: AuthState, form: FormData): Promise
     })
     .safeParse({ name: form.get('name'), email: form.get('email'), password: form.get('password') });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
-  const admin = createAdminClient();
-  const { error } = await admin.auth.admin.createUser({
+  const { error } = await createUser({
     email: parsed.data.email,
     password: parsed.data.password,
-    email_confirm: true,
-    user_metadata: { name: parsed.data.name },
+    meta: { name: parsed.data.name },
   });
   if (error) return { error: t.createFailed(error.message) };
-  const supabase = await createClient();
-  await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+  await signInWithPassword(parsed.data.email, parsed.data.password);
   redirect('/overzicht');
 }

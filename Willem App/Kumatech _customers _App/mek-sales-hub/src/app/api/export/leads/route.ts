@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import ExcelJS from 'exceljs';
 import { getSessionUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { provinceBySlug, statusLabel } from '@/lib/constants';
 import { toCsv } from '@/lib/csv';
 import { todayIso } from '@/lib/format';
@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
   const format = request.nextUrl.searchParams.get('format') ?? 'json';
   const province = provinceBySlug(request.nextUrl.searchParams.get('provincie') ?? '')?.name;
 
-  const supabase = await createClient();
-  let query = supabase.from('leads').select(LEAD_COLUMNS).order('kans', { nullsFirst: false }).order('bedrijf');
+  const db = await createClient();
+  let query = db.from('leads').select(LEAD_COLUMNS).order('kans', { nullsFirst: false }).order('bedrijf');
   if (province) query = query.eq('provincie', province);
   const { data } = await query.limit(20000);
   const leads = (data ?? []) as unknown as Record<string, string | number | null>[];

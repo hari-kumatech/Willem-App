@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { PageHeader } from '@/components/ui';
 import { DemoClient, type DemoLead, type DemoTab } from '@/components/demo/DemoClient';
 import { canWrite, requireUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { getMessages } from '@/i18n/server';
 import { demo } from '@/i18n/messages/demo';
 import { loadSettings } from '@/modules/settings/load';
@@ -20,7 +20,7 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 export default async function DemoPage(props: PageProps<'/demo'>) {
   const user = await requireUser();
-  const [sp, settings, t, supabase] = await Promise.all([props.searchParams, loadSettings(), getMessages(demo), createClient()]);
+  const [sp, settings, t, db] = await Promise.all([props.searchParams, loadSettings(), getMessages(demo), createClient()]);
 
   const tabParam = first(sp.tab);
   const tab: DemoTab = TABS.includes(tabParam as DemoTab) ? (tabParam as DemoTab) : '2d';
@@ -28,8 +28,8 @@ export default async function DemoPage(props: PageProps<'/demo'>) {
   const leadId = leadParam && UUID.test(leadParam) ? leadParam : null;
 
   const [leadsRes, leadRes] = await Promise.all([
-    supabase.from('leads').select('id, bedrijf').order('bedrijf', { ascending: true }).limit(200),
-    leadId ? supabase.from('leads').select('id, bedrijf, hall').eq('id', leadId).maybeSingle() : Promise.resolve(null),
+    db.from('leads').select('id, bedrijf').order('bedrijf', { ascending: true }).limit(200),
+    leadId ? db.from('leads').select('id, bedrijf, hall').eq('id', leadId).maybeSingle() : Promise.resolve(null),
   ]);
   if (leadsRes.error) console.error('[demo] leads load failed', leadsRes.error.message);
 

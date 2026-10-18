@@ -1,6 +1,6 @@
 import 'server-only';
 
-// Server-side configuration. Only Supabase is required:
+// Server-side configuration. Only the database (PostgREST URL + AUTH_JWT_SECRET, from npm run db:start) is required:
 // without n8n webhooks the app runs in demo mode, without an Anthropic key the agents use rules ("regelmodus").
 function optional(name: string): string | undefined {
   const value = process.env[name]?.trim();
@@ -19,9 +19,10 @@ function aiProvider(): AiProvider | null {
 }
 
 export const env = {
-  supabaseUrl: optional('SUPABASE_URL') ?? optional('NEXT_PUBLIC_SUPABASE_URL'),
-  supabasePublishableKey: optional('SUPABASE_PUBLISHABLE_KEY') ?? optional('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
-  supabaseSecretKey: optional('SUPABASE_SECRET_KEY'),
+  // PostgREST in front of PostgreSQL (docker-compose.yml)
+  postgrestUrl: (optional('POSTGREST_URL') ?? 'http://127.0.0.1:54331').replace(/\/+$/, ''),
+  // Signs login sessions and database tokens; PostgREST verifies them with the same secret. Server only.
+  authJwtSecret: optional('AUTH_JWT_SECRET'),
   // URL n8n uses for callbacks (n8n in Docker reaches the laptop at host.docker.internal)
   appUrl: optional('APP_URL')?.replace(/\/+$/, ''),
   n8nDiscoveryWebhookUrl: optional('N8N_DISCOVERY_WEBHOOK_URL'),
@@ -40,7 +41,9 @@ export const env = {
   ollamaUrl: (optional('OLLAMA_URL') ?? 'http://localhost:11434').replace(/\/+$/, ''),
   ollamaModel: optional('OLLAMA_MODEL') ?? 'qwen2.5:7b',
   ollamaContext: Number(optional('OLLAMA_NUM_CTX') ?? 16384),
-  ollamaTimeoutMs: Number(optional('OLLAMA_TIMEOUT_SECONDS') ?? 600) * 1000,
+  ollamaTimeoutMs: Number(optional('OLLAMA_TIMEOUT_SECONDS') ?? 900) * 1000,
+  // Characters of website text per company for the local model (Claude gets 14,000)
+  ollamaEvidenceChars: Number(optional('OLLAMA_EVIDENCE_CHARS') ?? 7000),
   aiProvider: aiProvider(),
   kvkApiKey: optional('KVK_API_KEY'),
   timezone: optional('DEFAULT_TIMEZONE') ?? 'Europe/Amsterdam',

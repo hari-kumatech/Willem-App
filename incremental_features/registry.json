@@ -1,0 +1,15 @@
+{
+  "features": [
+    {
+      "id": "INC-002",
+      "folder": "mek-movers-apps",
+      "title": "MEK Movers – dashboard, besparingscalculator and besparingsvideo",
+      "summary": "Offline copy of the MEK Movers apps from claude.ai (dashboard with leads, customers, quotes, orders, planning, machines, service, stock, invoices and goals; customer savings calculator with 3D; savings video…",
+      "source": "incremental_features/mek-movers-apps/FEATURE.md",
+      "added": "2026-10-18",
+      "status": "active",
+      "removed": null,
+      "removedId": null
+    }
+  ]
+}

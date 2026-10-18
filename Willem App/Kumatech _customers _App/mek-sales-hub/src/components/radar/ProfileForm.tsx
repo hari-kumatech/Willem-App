@@ -7,10 +7,10 @@ import { Button, Card, CardHeader, Notice, Pill, cx } from '@/components/ui';
 import { useMessages } from '@/i18n/client';
 import { common } from '@/i18n/messages/common';
 import { radarMsg } from '@/i18n/messages/radar';
-import { PROVINCES, RADIUS_OPTIONS, SEARCH_TERMS, SEGMENTS } from '@/lib/constants';
+import { PROVINCES, RADIUS_MAX_KM, RADIUS_OPTIONS, SEARCH_TERMS, SEGMENTS } from '@/lib/constants';
 import { deleteProfile, saveProfile, suggestTerms } from '@/modules/radar/actions';
 import type { Schedule, SearchFilters } from '@/modules/radar/filters';
-import { tilesFor } from '@/modules/radar/tiles';
+import { radiusUsesTiles, tilesFor } from '@/modules/radar/tiles';
 
 export interface ProfileFormValue {
   id?: string;
@@ -55,7 +55,7 @@ export function ProfileForm({ initial, kvk, ai }: { initial: ProfileFormValue; k
   const toggleIn = <T,>(list: T[], item: T) => (list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
 
   const allTerms = useMemo(() => [...new Set([...SEARCH_TERMS, ...f.terms])], [f.terms]);
-  const areas = f.areaMode === 'radius' ? 1 : Math.min(f.tilesPerRun, tilesFor(f).length || 1);
+  const areas = f.areaMode === 'radius' ? (radiusUsesTiles(f) ? f.tilesPerRun : 1) : Math.min(f.tilesPerRun, tilesFor(f).length || 1);
   const searches = f.terms.length * areas;
 
   const submit = (e: React.FormEvent) => {
@@ -135,6 +135,18 @@ export function ProfileForm({ initial, kvk, ai }: { initial: ProfileFormValue; k
                     </button>
                   ))}
                 </div>
+                <label className="mt-2 flex items-center gap-2 text-xs text-soft" htmlFor="p-radius-custom">
+                  {tf.radiusCustom}
+                  <input
+                    id="p-radius-custom"
+                    type="number"
+                    min={1}
+                    max={RADIUS_MAX_KM}
+                    className="field w-24 py-1"
+                    value={f.radiusKm}
+                    onChange={(e) => setF({ radiusKm: Math.max(1, Math.min(RADIUS_MAX_KM, Math.round(Number(e.target.value) || 1))) })}
+                  />
+                </label>
               </div>
             </>
           )}
@@ -152,11 +164,14 @@ export function ProfileForm({ initial, kvk, ai }: { initial: ProfileFormValue; k
             </fieldset>
           )}
 
-          {f.areaMode !== 'radius' && (
+          {(f.areaMode !== 'radius' || radiusUsesTiles(f)) && (
             <div className="md:col-span-2">
-              <label className="label" htmlFor="p-tiles">{tf.tilesPerRun}: {f.tilesPerRun} ({tilesFor(f).length} tiles)</label>
+              <label className="label" htmlFor="p-tiles">
+                {tf.tilesPerRun}: {f.tilesPerRun}
+                {f.areaMode !== 'radius' ? ` (${tilesFor(f).length} tiles)` : ''}
+              </label>
               <input id="p-tiles" type="range" min={1} max={40} value={f.tilesPerRun} onChange={(e) => setF({ tilesPerRun: Number(e.target.value) })} className="w-full" />
-              <p className="text-xs text-soft">{tf.tilesHint}</p>
+              <p className="text-xs text-soft">{f.areaMode === 'radius' ? tf.radiusTilesHint : tf.tilesHint}</p>
             </div>
           )}
 

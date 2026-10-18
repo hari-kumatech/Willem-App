@@ -1,6 +1,6 @@
 // Writes leads together with their company row. Used by the seed script, Excel import and JSON restore.
-// Takes a Supabase client as argument (no server-only import) so the seed script can use it.
-import type { SupabaseClient } from '@supabase/supabase-js';
+// Takes a database client as argument (no server-only import) so the seed script can use it.
+import type { DbClient } from '@/lib/db';
 import { classifySegment } from '../radar/prefilter';
 import { companyFromLead, type LeadRow } from './mapping';
 
@@ -13,7 +13,7 @@ export interface UpsertResult {
   errors: string[];
 }
 
-async function findCompany(db: SupabaseClient, row: LeadRow): Promise<string | null> {
+async function findCompany(db: DbClient, row: LeadRow): Promise<string | null> {
   const company = companyFromLead(row);
   if (company.name_key) {
     const { data } = await db.from('companies').select('id').eq('name_key', company.name_key).maybeSingle();
@@ -26,7 +26,7 @@ async function findCompany(db: SupabaseClient, row: LeadRow): Promise<string | n
   return null;
 }
 
-async function ensureCompany(db: SupabaseClient, row: LeadRow): Promise<string | null> {
+async function ensureCompany(db: DbClient, row: LeadRow): Promise<string | null> {
   const existing = await findCompany(db, row);
   if (existing) {
     await db.from('companies').update({ state: 'lead' }).eq('id', existing);
@@ -44,7 +44,7 @@ async function ensureCompany(db: SupabaseClient, row: LeadRow): Promise<string |
 }
 
 // Dedup on legacy id, then normalised name + PC4 (fixes the plaats.slice(0,7) import bug from A.8)
-async function findLead(db: SupabaseClient, row: LeadRow): Promise<{ id: string; version: number } | null> {
+async function findLead(db: DbClient, row: LeadRow): Promise<{ id: string; version: number } | null> {
   if (row.legacy_id) {
     const { data } = await db.from('leads').select('id, version').eq('legacy_id', row.legacy_id).maybeSingle();
     if (data) return data;
@@ -57,7 +57,7 @@ async function findLead(db: SupabaseClient, row: LeadRow): Promise<{ id: string;
 }
 
 export async function upsertLeads(
-  db: SupabaseClient,
+  db: DbClient,
   rows: LeadRow[],
   options: { mode: UpsertMode; userId: string | null; source: string; onProgress?: (done: number) => void },
 ): Promise<UpsertResult> {

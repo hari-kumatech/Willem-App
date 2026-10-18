@@ -35,12 +35,18 @@ export async function callOllama<Schema extends z.ZodType>({
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         model,
-        stream: false,
+        // Streaming: Ollama answers at once and sends tokens as they come. Without it the HTTP headers only
+        // arrive when the whole answer is done, and Node's fetch gives up after 300 s on a slow CPU.
+        stream: true,
         format: jsonSchema(schema),
         keep_alive: '30m',
-        options: { temperature: 0, num_ctx: env.ollamaContext, num_predict: Math.min(maxTokens, 4096) },
+        // ~800 output tokens for a verdict; the cap keeps a run from stalling on a rambling answer
+        options: { temperature: 0, num_ctx: env.ollamaContext, num_predict: Math.min(maxTokens, 2000) },
         messages: [
-          { role: 'system', content: `${system}\n\nAntwoord uitsluitend met JSON volgens het gevraagde schema.` },
+          {
+            role: 'system',
+            content: `${system}\n\nGebruik alleen feiten die letterlijk in de gegeven tekst staan. Verzin geen getallen, namen of bronnen; schrijf "onbekend" als iets er niet staat. Antwoord uitsluitend met JSON volgens het gevraagde schema.`,
+          },
           { role: 'user', content: prompt },
         ],
       }),
@@ -48,11 +54,33 @@ export async function callOllama<Schema extends z.ZodType>({
       signal: AbortSignal.timeout(env.ollamaTimeoutMs),
       cache: 'no-store',
     });
-    const data = (await response.json().catch(() => ({}))) as OllamaChatResponse;
-    if (!response.ok || data.error) {
-      console.error(`[ai] Ollama error ${response.status}: ${data.error ?? 'unknown'}`);
+    if (!response.ok || !response.body) {
+      const detail = (await response.text().catch(() => '')).slice(0, 300);
+      console.error(`[ai] Ollama error ${response.status}: ${detail || 'unknown'}`);
       return null;
     }
+    // NDJSON stream: one JSON object per line; the last one has done = true and the token counts
+    let content = '';
+    let data: OllamaChatResponse = {};
+    let buffer = '';
+    const decoder = new TextDecoder();
+    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+      buffer += decoder.decode(chunk, { stream: true });
+      let newline: number;
+      while ((newline = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        if (!line) continue;
+        const part = JSON.parse(line) as OllamaChatResponse & { done?: boolean };
+        if (part.error) {
+          console.error(`[ai] Ollama error: ${part.error}`);
+          return null;
+        }
+        content += part.message?.content ?? '';
+        if (part.done) data = part;
+      }
+    }
+    data.message = { content };
     if (data.done_reason === 'length') {
       console.warn('[ai] Ollama answer was cut off (num_predict), falling back to rules');
       return null;

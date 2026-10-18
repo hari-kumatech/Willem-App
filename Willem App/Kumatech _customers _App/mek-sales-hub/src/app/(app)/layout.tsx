@@ -2,13 +2,13 @@ import { cookies } from 'next/headers';
 import { AppShell } from '@/components/layout/AppShell';
 import { requireUser } from '@/lib/auth';
 import { features } from '@/lib/env';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 
 export default async function AppLayout({ children }: LayoutProps<'/'>) {
   const user = await requireUser();
-  const supabase = await createClient();
+  const db = await createClient();
   const [{ count }, cookieStore] = await Promise.all([
-    supabase.from('review_queue').select('id', { count: 'exact', head: true }).eq('state', 'new'),
+    db.from('review_queue').select('id', { count: 'exact', head: true }).eq('state', 'new'),
     cookies(),
   ]);
   const presentation = cookieStore.get('mek-presentation')?.value === 'on';

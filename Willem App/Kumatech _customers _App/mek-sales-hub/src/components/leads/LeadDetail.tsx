@@ -62,6 +62,10 @@ export function LeadDetail({
   const tc = useMessages(common);
   const to = useMessages(outreachMsg);
   const lang = useLang();
+  // Texts copied from the assessment (not edited since) follow the UI language; text typed by a user stays as typed
+  const english = lang === 'en' ? company?.texts_en ?? null : null;
+  const leadWaarom = english?.waarom && lead.waarom === company?.waarom ? english.waarom : lead.waarom;
+  const leadAanpak = english?.aanpak && lead.aanpak === company?.aanpak ? english.aanpak : lead.aanpak;
   const router = useRouter();
   const [editOpen, setEditOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -172,8 +176,8 @@ export function LeadDetail({
                 {lead.web && <ExtLink href={lead.web} className="inline-flex items-center gap-1"><Globe size={14} />{t.website}</ExtLink>}
                 {lead.maps && <ExtLink href={lead.maps} className="inline-flex items-center gap-1"><MapPin size={14} />{t.maps}</ExtLink>}
               </div>
-              {lead.waarom && <div className="sm:col-span-2"><dt className="label">{t.f.waarom}</dt><dd>{lead.waarom}</dd></div>}
-              {lead.aanpak && <div className="internal-only sm:col-span-2"><dt className="label">{t.f.aanpak}</dt><dd>{lead.aanpak}</dd></div>}
+              {leadWaarom && <div className="sm:col-span-2"><dt className="label">{t.f.waarom}</dt><dd>{leadWaarom}</dd></div>}
+              {leadAanpak && <div className="internal-only sm:col-span-2"><dt className="label">{t.f.aanpak}</dt><dd>{leadAanpak}</dd></div>}
               {lead.notitie && <div className="internal-only sm:col-span-2"><dt className="label">{t.f.notitie}</dt><dd className="whitespace-pre-wrap">{lead.notitie}</dd></div>}
             </dl>
           </Card>

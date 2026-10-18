@@ -1,7 +1,8 @@
 import 'server-only';
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
+import { getSessionUserId } from '@/lib/session';
 
 export type Role = 'admin' | 'sales' | 'viewer';
 
@@ -14,13 +15,13 @@ export interface SessionUser {
 
 // The logged-in user with their role, or null. Cached per request.
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  if (!data.user) return null;
-  const { data: profile } = await supabase
+  const userId = await getSessionUserId();
+  if (!userId) return null;
+  const db = await createClient();
+  const { data: profile } = await db
     .from('profiles')
     .select('id, email, name, role')
-    .eq('id', data.user.id)
+    .eq('id', userId)
     .maybeSingle();
   if (!profile) return null;
   return profile as SessionUser;

@@ -1,5 +1,5 @@
 import 'server-only';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { provinceBySlug, STATUS_CODES } from '@/lib/constants';
 import { LEAD_COLUMNS, PAGE_SIZE, type Lead, type LeadFilters } from './types';
 
@@ -16,8 +16,8 @@ const ilikeValue = (q: string) => `%${q.replace(/[%_\\]/g, (c) => `\\${c}`).repl
 
 // KPI tiles are computed over the province scope (not the other filters), like the original dashboard
 export async function leadKpis(provincie: string): Promise<LeadKpis> {
-  const supabase = await createClient();
-  let query = supabase.from('leads').select('status, kans, waarde, plaats');
+  const db = await createClient();
+  let query = db.from('leads').select('status, kans, waarde, plaats');
   const province = provinceBySlug(provincie)?.name;
   if (province) query = query.eq('provincie', province);
   else if (provincie === 'geen') query = query.eq('provincie', '');
@@ -44,8 +44,8 @@ export async function leadKpis(provincie: string): Promise<LeadKpis> {
 
 // Filtered, sorted, paginated on the server (B.12: fast with 2,000 leads)
 export async function listLeads(filters: LeadFilters): Promise<{ leads: Lead[]; count: number; pages: number }> {
-  const supabase = await createClient();
-  let query = supabase.from('leads').select(LEAD_COLUMNS, { count: 'exact' });
+  const db = await createClient();
+  let query = db.from('leads').select(LEAD_COLUMNS, { count: 'exact' });
   if (filters.status) query = query.eq('status', filters.status);
   if (filters.kans.length) query = query.in('kans', filters.kans);
   if (filters.familie) query = query.in('familie', ['ja', 'groot']);
@@ -90,7 +90,7 @@ export async function listLeads(filters: LeadFilters): Promise<{ leads: Lead[]; 
 
 export async function getLead(id: string): Promise<Lead | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const supabase = await createClient();
-  const { data } = await supabase.from('leads').select(LEAD_COLUMNS).eq('id', id).maybeSingle();
+  const db = await createClient();
+  const { data } = await db.from('leads').select(LEAD_COLUMNS).eq('id', id).maybeSingle();
   return (data as unknown as Lead) ?? null;
 }

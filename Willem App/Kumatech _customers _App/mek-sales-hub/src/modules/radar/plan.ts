@@ -2,7 +2,7 @@ import 'server-only';
 import { geocodePostcode, type GeoPoint } from '@/lib/geo';
 import { normaliseProvince } from '@/lib/constants';
 import type { SearchFilters } from './filters';
-import { tilesFor, TILE_RADIUS_KM, type Tile } from './tiles';
+import { radiusUsesTiles, tilesFor, TILE_RADIUS_KM, type Tile } from './tiles';
 
 export interface Area {
   postcode: string;
@@ -45,6 +45,22 @@ export async function buildPlan(filters: SearchFilters, coverageCursor: number):
   if (filters.areaMode === 'radius') {
     const geo = await geocodePostcode(filters.postcode);
     if (!geo) throw new PlanError('postcodeNotFound', filters.postcode);
+    // Large circle: walk the tiles inside it (nearest first) with the cursor, like a province.
+    // The prefilter still drops places outside the circle (origin + maxDistanceKm).
+    const circleTiles = radiusUsesTiles(filters) ? tilesFor(filters, geo) : [];
+    if (circleTiles.length > 1) {
+      const walked = walkTiles(circleTiles, coverageCursor, filters.tilesPerRun);
+      return {
+        entries: walked.areas.flatMap((area) => terms.map((term) => ({ term, area }))),
+        areas: walked.areas,
+        origin: { lat: geo.lat, lng: geo.lng },
+        maxDistanceKm: filters.radiusKm,
+        provinces: [],
+        nextCursor: walked.nextCursor,
+        wrapped: walked.wrapped,
+        tilesTotal: circleTiles.length,
+      };
+    }
     const area: Area = {
       postcode: filters.postcode.replace(/\s/g, '').toUpperCase(),
       label: geo.city || geo.label,
@@ -67,11 +83,27 @@ export async function buildPlan(filters: SearchFilters, coverageCursor: number):
 
   const tiles = tilesFor(filters);
   if (!tiles.length) throw new PlanError('noArea');
-  const start = coverageCursor % tiles.length;
-  const count = Math.min(filters.tilesPerRun, tiles.length);
+  const walked = walkTiles(tiles, coverageCursor, filters.tilesPerRun);
+
+  return {
+    entries: walked.areas.flatMap((area) => terms.map((term) => ({ term, area }))),
+    areas: walked.areas,
+    origin: null,
+    maxDistanceKm: null,
+    provinces: filters.areaMode === 'provinces' ? filters.provinces.map(normaliseProvince) : [],
+    nextCursor: walked.nextCursor,
+    wrapped: walked.wrapped,
+    tilesTotal: tiles.length,
+  };
+}
+
+// The next `perRun` tiles from the cursor; wraps to the start when the whole area has been covered
+function walkTiles(tiles: Tile[], cursor: number, perRun: number) {
+  const start = cursor % tiles.length;
+  const count = Math.min(perRun, tiles.length);
   const picked: Tile[] = [];
   for (let i = 0; i < count; i++) picked.push(tiles[(start + i) % tiles.length]);
-  const nextCursor = start + count;
+  const next = start + count;
   const areas: Area[] = picked.map((t) => ({
     postcode: t.pc4,
     label: t.place,
@@ -80,15 +112,5 @@ export async function buildPlan(filters: SearchFilters, coverageCursor: number):
     radiusKm: TILE_RADIUS_KM,
     province: t.province,
   }));
-
-  return {
-    entries: areas.flatMap((area) => terms.map((term) => ({ term, area }))),
-    areas,
-    origin: null,
-    maxDistanceKm: null,
-    provinces: filters.areaMode === 'provinces' ? filters.provinces.map(normaliseProvince) : [],
-    nextCursor: nextCursor >= tiles.length ? 0 : nextCursor,
-    wrapped: nextCursor >= tiles.length,
-    tilesTotal: tiles.length,
-  };
+  return { areas, nextCursor: next >= tiles.length ? 0 : next, wrapped: next >= tiles.length };
 }

@@ -4,11 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { ForbiddenError, requireWriter } from '@/lib/auth';
 import { euro } from '@/lib/format';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { getLang, getMessages } from '@/i18n/server';
 import { roi } from '@/i18n/messages/roi';
 import { loadSettings } from '@/modules/settings/load';
 import { computeRoi, customerSchema, quoteTotalExcl, roiInputsSchema, summarize } from './calc';
+import { notifyLeadChanged } from '@/modules/movers/sync';
 
 const saveQuoteSchema = z.object({
   leadId: z.uuid().nullish(),
@@ -48,20 +49,20 @@ export async function saveQuote(input: SaveQuoteInput): Promise<SaveQuoteResult>
   const totalExcl = quoteTotalExcl(result, model, trucks, vatPct);
   const results = { ...summarize(result), vatPct, validDays: settings.product.quoteValidDays, totalExcl };
 
-  const supabase = await createClient();
+  const db = await createClient();
 
   if (leadId) {
-    const { data: lead, error } = await supabase.from('leads').select('id').eq('id', leadId).maybeSingle();
+    const { data: lead, error } = await db.from('leads').select('id').eq('id', leadId).maybeSingle();
     if (error || !lead) return { ok: false, error: t.errLead };
   }
 
-  const { data: number, error: numberError } = await supabase.rpc('next_quote_number');
+  const { data: number, error: numberError } = await db.rpc('next_quote_number');
   if (numberError || typeof number !== 'string') {
     console.error('[roi] next_quote_number failed', numberError?.message);
     return { ok: false, error: t.errNumber };
   }
 
-  const { data: row, error: insertError } = await supabase
+  const { data: row, error: insertError } = await db
     .from('quotes')
     .insert({
       lead_id: leadId ?? null,
@@ -82,7 +83,7 @@ export async function saveQuote(input: SaveQuoteInput): Promise<SaveQuoteResult>
   }
 
   if (leadId) {
-    const { error: activityError } = await supabase.from('activities').insert({
+    const { error: activityError } = await db.from('activities').insert({
       lead_id: leadId,
       type: 'quote',
       text: t.activityText(number, t.models[model], euro(totalExcl, 0, lang)),
@@ -91,8 +92,9 @@ export async function saveQuote(input: SaveQuoteInput): Promise<SaveQuoteResult>
     if (activityError) console.error('[roi] activity insert failed', activityError.message);
 
     // Only fill an empty deal value; the version trigger bumps leads.version itself.
-    const { error: leadError } = await supabase.from('leads').update({ waarde: totalExcl }).eq('id', leadId).eq('waarde', 0);
+    const { error: leadError } = await db.from('leads').update({ waarde: totalExcl }).eq('id', leadId).eq('waarde', 0);
     if (leadError) console.error('[roi] lead value update failed', leadError.message);
+    await notifyLeadChanged(leadId);
 
     revalidatePath(`/leads/${leadId}`);
     revalidatePath('/leads');

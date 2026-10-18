@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 // End-to-end test of the main flow (spec B.12): run → review → approve → lead → quote PDF.
-// Needs the local stack: `npx supabase start`, the app on :3000, and either n8n (real or with
+// Needs the local stack: `npm run db:start`, the app on :3000, and either n8n (real or with
 // `npm run mock:apify`) or `npm run mock:n8n`. Run with: npm run test:e2e
 export default defineConfig({
   testDir: './e2e',

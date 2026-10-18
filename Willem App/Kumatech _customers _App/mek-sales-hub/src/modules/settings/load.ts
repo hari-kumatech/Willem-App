@@ -1,6 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/db/admin';
 import { mergeSettings, type AppSettings } from './types';
 
 // Settings are not secret (prices, thresholds, weights), so the system client reads them.

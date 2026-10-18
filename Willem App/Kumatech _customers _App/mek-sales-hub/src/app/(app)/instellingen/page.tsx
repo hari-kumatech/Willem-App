@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/ui';
 import { SettingsView } from '@/components/settings/SettingsView';
 import { canWrite, isAdmin, requireUser } from '@/lib/auth';
 import { env, features } from '@/lib/env';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { getMessages } from '@/i18n/server';
 import { settingsMsg } from '@/i18n/messages/settings';
 import { loadSettings } from '@/modules/settings/load';
@@ -30,11 +30,11 @@ function lanUrls(port = Number(process.env.PORT ?? 3000)): string[] {
 export default async function SettingsPage() {
   const user = await requireUser();
   const t = await getMessages(settingsMsg);
-  const supabase = await createClient();
+  const db = await createClient();
   const settings = await loadSettings();
   const [{ data: users }, { data: dnc }, feedback] = await Promise.all([
-    supabase.from('profiles').select('id, name, email, role, created_at').order('created_at'),
-    canWrite(user) ? supabase.from('do_not_contact').select('id, value, created_at').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
+    db.from('profiles').select('id, name, email, role, created_at').order('created_at'),
+    canWrite(user) ? db.from('do_not_contact').select('id, value, created_at').order('created_at', { ascending: false }) : Promise.resolve({ data: [] }),
     suggestWeights(settings.weights),
   ]);
 

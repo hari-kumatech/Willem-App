@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useEffect, useState, useTransition } from 'react';
-import { BarChart3, Calculator, LayoutDashboard, LogOut, Menu, Monitor, Moon, Radar, Settings, Sun, Users, X } from 'lucide-react';
+import { BarChart3, LogOut, Menu, Moon, Sun, X } from 'lucide-react';
 import { Logo } from './Logo';
+import { SideNav } from './SideNav';
 import { cx } from '@/components/ui';
 import { logout } from '@/modules/auth/actions';
 import { setPresentationMode } from '@/modules/auth/preferences';
@@ -13,15 +14,6 @@ import type { SessionUser } from '@/lib/auth';
 import { useLang, useMessages } from '@/i18n/client';
 import { setLanguage } from '@/i18n/actions';
 import { common } from '@/i18n/messages/common';
-
-const NAV = [
-  { href: '/overzicht', key: 'overzicht', icon: LayoutDashboard },
-  { href: '/leads', key: 'leads', icon: Users },
-  { href: '/radar', key: 'radar', icon: Radar },
-  { href: '/roi', key: 'roi', icon: Calculator },
-  { href: '/demo', key: 'demo', icon: Monitor },
-  { href: '/instellingen', key: 'instellingen', icon: Settings },
-] as const;
 
 export function AppShell({
   user,
@@ -46,39 +38,17 @@ export function AppShell({
   useEffect(() => setMounted(true), []);
   useEffect(() => setOpen(false), [pathname]);
 
-  const nav = (
-    <nav className="flex flex-col gap-1">
-      {NAV.map(({ href, key, icon: Icon }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`);
-        return (
-          <Link
-            key={href}
-            href={href}
-            className={cx(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
-              active ? 'bg-accent text-accent-ink' : 'text-soft hover:bg-card-2 hover:text-ink',
-            )}
-          >
-            <Icon size={18} aria-hidden />
-            <span className="flex-1">{t.nav[key]}</span>
-            {href === '/radar' && queueCount > 0 && (
-              <span className={cx('rounded-full px-2 text-xs font-bold', active ? 'bg-accent-ink/20' : 'bg-accent text-accent-ink')}>{queueCount}</span>
-            )}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  const nav = <SideNav pathname={pathname} queueCount={queueCount} />;
 
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[240px_1fr]">
       {/* Sidebar (desktop) */}
-      <aside className="no-print sticky top-0 hidden h-dvh flex-col gap-6 border-r border-line bg-card px-3 py-5 lg:flex">
+      <aside className="no-print sticky top-0 hidden h-dvh flex-col gap-5 border-r border-line bg-card px-3 py-5 lg:flex">
         <Link href="/overzicht" className="flex items-center gap-3 px-2">
           <Logo className="h-7 w-auto" />
           <span className="mek-heading text-sm text-soft">Sales Hub</span>
         </Link>
-        {nav}
+        <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">{nav}</div>
         <div className="mt-auto space-y-2 px-2 text-xs text-soft">
           <div className="flex flex-wrap gap-1">
             <span className={cx('rounded px-1.5 py-0.5', mode.demo ? 'bg-warning/20 text-warning' : 'bg-positive/20 text-positive')}>
@@ -149,7 +119,7 @@ export function AppShell({
         {open && (
           <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true">
             <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
-            <div className="absolute inset-y-0 left-0 flex w-72 flex-col gap-6 bg-card p-4">
+            <div className="absolute inset-y-0 left-0 flex w-72 flex-col gap-6 overflow-y-auto bg-card p-4">
               <div className="flex items-center justify-between">
                 <Logo className="h-7 w-auto" />
                 <button onClick={() => setOpen(false)} className="rounded-lg p-2 text-soft" aria-label={t.menuClose}>

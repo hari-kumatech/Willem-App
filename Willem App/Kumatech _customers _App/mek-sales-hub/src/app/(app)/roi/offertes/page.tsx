@@ -7,7 +7,7 @@ import { getLang, getMessages } from '@/i18n/server';
 import { roi } from '@/i18n/messages/roi';
 import { requireUser } from '@/lib/auth';
 import { dateTimeNl, euro } from '@/lib/format';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { QUOTE_MODELS, type QuoteModel } from '@/modules/roi/calc';
 import { loadSettings } from '@/modules/settings/load';
 
@@ -34,9 +34,9 @@ interface QuoteRow {
 // Viewers see the list and can re-create PDFs; saving new quotes is for admin + sales (action + RLS).
 export default async function QuotesPage() {
   await requireUser();
-  const [t, lang, settings, supabase] = await Promise.all([getMessages(roi), getLang(), loadSettings(), createClient()]);
+  const [t, lang, settings, db] = await Promise.all([getMessages(roi), getLang(), loadSettings(), createClient()]);
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('quotes')
     .select('id, number, created_at, model, trucks, total_excl, customer, inputs, results, lead_id, created_by, leads(bedrijf)')
     .order('created_at', { ascending: false })
@@ -46,7 +46,7 @@ export default async function QuotesPage() {
   const creatorIds = [...new Set(rows.map((r) => r.created_by).filter((id): id is string => Boolean(id)))];
   const names = new Map<string, string>();
   if (creatorIds.length) {
-    const { data: profiles } = await supabase.from('profiles').select('id, name, email').in('id', creatorIds);
+    const { data: profiles } = await db.from('profiles').select('id, name, email').in('id', creatorIds);
     for (const p of (profiles ?? []) as { id: string; name: string; email: string }[]) names.set(p.id, p.name || p.email);
   }
 

@@ -110,6 +110,17 @@ describe('qualifier rules mode', () => {
     expect(totalScore(v.criteria, distanceFactor(8, 150), DEFAULT_SETTINGS.weights)).toBeLessThan(50);
     expect(v.is_logistics).toBe(false);
   });
+  it('writes every text in Dutch and English, reasons in the same order', () => {
+    const v = rulesQualifier(evidence());
+    expect(v.en.reasons).toHaveLength(v.reasons.length);
+    expect(v.en.risks).toHaveLength(v.risks.length);
+    expect(v.waarom).toMatch(/bespaart ritten/);
+    expect(v.en.waarom).toMatch(/saves trips between docks/);
+    expect(v.en.aanpak).not.toBe(v.aanpak);
+    const low = rulesQualifier(evidence({ segment: 'Transport', website: '', categories: ['Transportbedrijf'], pages: [], search: [], reviews: 2 }));
+    expect(low.en.risks).toEqual(['No website found', 'Possibly mainly road transport without its own dock flows']);
+    expect(low.en.reasons.every((r) => !/[ëï]|Locatie|verplaatst/.test(r))).toBe(true);
+  });
 });
 
 describe('contacts', () => {

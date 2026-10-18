@@ -85,6 +85,14 @@ export const qualifierSchema = z.object({
   aanpak: z.string().describe('Concrete eerste aanpak voor sales (wie, welk argument, welke demo)'),
   risks: z.array(z.string()),
   estimated_trucks: z.number().describe('Geschat aantal Mek-Riders dat zinvol is (0 als onbekend)'),
+  en: z
+    .object({
+      waarom: z.string(),
+      aanpak: z.string(),
+      reasons: z.array(z.string()).describe('De tekst van elke reden in het Engels, in dezelfde volgorde als reasons'),
+      risks: z.array(z.string()).describe('Elk risico in het Engels, in dezelfde volgorde als risks'),
+    })
+    .describe('Dezelfde waarom, aanpak, redenen en risico’s in het Engels (voor Engelstalige gebruikers)'),
 });
 
 export type QualifierOutput = z.infer<typeof qualifierSchema>;
@@ -109,6 +117,7 @@ export function qualifierSystem(product: ProductSettings, weights: WeightSetting
     '- familie: "ja" bij een familiebedrijf, "groot" bij een groot familiebedrijf (100+ medewerkers), "nee" als duidelijk geen familiebedrijf, anders "onbekend".',
     '- Signalen alleen met een echte bron uit de zoekresultaten of website; anders geen signaal.',
     '- Schrijf waarom, aanpak, redenen en risico’s in het Nederlands, kort en concreet.',
+    '- Geef in `en` dezelfde waarom, aanpak, reden-teksten (zelfde volgorde) en risico’s in het Engels. Bewijs-citaten worden niet vertaald.',
     '- Self-storage, verhuizers, uitzendbureaus en bedrijven zonder palletstromen: is_logistics = false en lage scores.',
     UNTRUSTED,
   ].join('\n');

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<script src="js/claude-local.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MEK Movers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #0e2038; --card: #142c4a; --card-2: #1a3558; --text: #f4f6f8; --soft: #93a6bf; --accent: #d6483d; --border: rgba(147,166,191,0.22); color-scheme: dark;
+    box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 48px 20px 60px; }
+  .logo { height: 46px; display: block; margin-bottom: 26px; }
+  h1 { font-family: 'Oswald', 'Arial Narrow', sans-serif; font-style: italic; font-weight: 700; text-transform: uppercase; transform: skewX(-6deg); transform-origin: left; display: inline-block; font-size: 2rem; margin: 0; }
+  .sub { color: var(--soft); margin: 6px 0 28px; }
+  .apps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 760px) { .apps { grid-template-columns: 1fr; } }
+  a.app { display: block; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; color: inherit; text-decoration: none; position: relative; overflow: hidden; }
+  a.app::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); }
+  a.app:hover { background: var(--card-2); }
+  a.app b { font-family: 'Oswald', 'Arial Narrow', sans-serif; font-weight: 600; font-size: 1.2rem; display: block; margin-bottom: 6px; }
+  a.app span { color: var(--soft); font-size: 0.9rem; line-height: 1.45; }
+  .tools { margin-top: 28px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .btn { background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 9px 14px; font-size: 0.88rem; font-weight: 600; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .btn:hover { background: var(--card); }
+  #stat { color: var(--soft); font-size: 0.85rem; margin-top: 18px; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTUVLIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgdmlld0JveD0iMCAwIDI0Ni4zMiA5NS42MSI+CiAgPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDMwLjUuMSwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDIuMS40IEJ1aWxkIDMpICAtLT4KICA8ZGVmcz4KICAgIDxzdHlsZT4KICAgICAgLnN0MCB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQoKICAgICAgLnN0MSB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIyNDEuMzIgNzMuOTcgMTIzLjk4IDczLjk3IDEyMy45OCA3MC45OSAyMzkuNDcgNzAuOTkgMjQxLjMyIDczLjk3Ii8+CiAgPHJlY3QgY2xhc3M9InN0MSIgeD0iLjU3IiB5PSI3MC45OSIgd2lkdGg9IjEyMy4zNyIgaGVpZ2h0PSIyLjk3Ii8+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSI3MS4zNCA5NS4yOSA2OC4xIDk1LjMzIDY5LjIzIDg5LjU5IDYyLjkzIDg5LjU5IDYxLjc1IDk1LjMxIDU4LjQ3IDk1LjMyIDYxLjMgODEuNTIgNjQuNTkgODEuNTIgNjMuNDkgODYuODMgNjkuNzUgODYuODMgNzAuODYgODEuNTIgNzQuMTEgODEuNTEgNzEuMzQgOTUuMjkiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTA5LjI5LDgxLjU1bDMuMjctLjAyLTEuNzksOC43MWMtLjksNC4zOS01LjEsNi4xOC05LjQsNC45Ny0yLjI0LS42My0zLjYxLTIuODEtMy4xNi01LjEybDEuNjctOC41OCwzLjI2LjAyLTEuNjQsOC40M2MtLjMxLDEuNTcuODQsMi43NSwyLjM3LDIuODMsMS44Ny4wOSwzLjMyLS45OCwzLjctMi44NGwxLjcxLTguNDFaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTUwLjI4LDkyLjY5YzEuODYuMzcsMy42Ni0uMTgsNC44Ni0xLjYxbDEuOTksMS45NWMtMi4wOSwyLjU4LTYuMzEsMy4xNi05LjE1LDIuMDMtMi4wMi0uOC0zLjQzLTIuNTctMy42NC00Ljc1LS4yNC0yLjQzLjUzLTQuODUsMi4yNi02LjU5LDMuMDgtMy4xMSw5LjA4LTMuNTEsMTEuNzgtLjA4bC0yLjQxLDEuOTVjLTEuNjItMi4xMy00LjY1LTEuOTktNi41My0uNDYtMS4xOC45Ni0xLjgsMi40OS0xLjg0LDQuMTItLjAzLDEuNjkuOTEsMy4wOCwyLjY4LDMuNDNaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTE0MS41NSw4OC4wM2MuMTkuNDgtLjA0LDEuMDMtLjIsMS41OWgtNi43NXMtMS4xNSw1LjY5LTEuMTUsNS42OWgtMS44NnMyLjc1LTEzLjc5LDIuNzUtMTMuNzloOS40NXMtLjI3LDEuNTgtLjI3LDEuNThsLTcuNTkuMDItLjk2LDQuODloNi42WiIvPgogIDxwb2x5Z29uIGNsYXNzPSJzdDAiIHBvaW50cz0iMTE5LjIyIDk1LjMxIDExNS45NiA5NS4zMiAxMTguMjEgODQuMTMgMTEzLjczIDg0LjA5IDExNC4yNiA4MS41IDEyNi40MyA4MS41MSAxMjUuOTcgODQuMSAxMjEuNTIgODQuMSAxMTkuMjIgOTUuMzEiLz4KICA8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjI1Ljc2IDg5LjUxIDE5LjI0IDg5LjUzIDE4LjU5IDkyLjc0IDI2LjM0IDkyLjc0IDI1LjggOTUuMzMgMTQuOCA5NS4zMyAxNy42MSA4MS41IDI4LjE2IDgxLjUxIDI3LjY2IDg0LjA0IDIwLjM0IDg0LjA2IDE5Ljc1IDg3IDI2LjIxIDg3LjAyIDI1Ljc2IDg5LjUxIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTM4Ljg3LDgxLjUyaC0zLjVzLTguNywxMy43OS04LjcsMTMuNzloMy40MnMxLjgxLTIuOTMsMS44MS0yLjkzbDYuNTcuMDMuNjcsMi45MmgzLjI5cy0zLjU1LTEzLjgxLTMuNTUtMTMuODFaTTMzLjM4LDg5Ljg4bDMuMjYtNS40MSwxLjI0LDUuMzQtNC40OS4wOFoiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTMuNTEsODMuNTVjLS45Mi0xLjI5LTIuMzQtMi0zLjk0LTJsLTYuNzQtLjAzLTIuODIsMTMuODFoMy4yNXMuODMtNC4wMS44My00LjAxaDIuNzdzMi4yNCw0LjA1LDIuMjQsNC4wNWwzLjM0LS4wOC0yLjMtNC4zN2MzLjIyLS45Myw0LjczLTQuNDQsMy4zNy03LjM1Wk0xMC4zNCw4Ny40NWMtLjM2LjYtMS4xOSwxLjE4LTIuMDUsMS4yMWwtMy42Ni4wOS45My00LjY1LDMuMTkuMDVjLjYyLDAsMS4zNC4yNiwxLjY5Ljg3LjQ1Ljc4LjMzLDEuNy0uMSwyLjQ0WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0xNzIuMDEsODMuNDNjLS43Ni0xLjE2LTEuOTctMS44NS0zLjM5LTEuODZsLTYuMDItLjA0LTIuNzksMTMuNzdoMS44OHMuOS00LjQxLjktNC40MWg0LjAyczIuMjcsNC40MSwyLjI3LDQuNDFjLjc1LjAyLDEuMzQuMDgsMS45NC0uMDZsLTIuMzYtNC42M2MzLjI3LS43NCw0LjkxLTQuMiwzLjU0LTcuMTlaTTE3MC4wNiw4Ny41OWMtLjQ5Ljg0LTEuNTgsMS42Mi0yLjc2LDEuNjRsLTQuMzMuMDQsMS4yMS02LjE1LDMuODEuMDNjLjgxLDAsMS43OC4zNiwyLjI1LDEuMTMuNjQsMS4wNi40MiwyLjI5LS4xOCwzLjMxWiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0yMjUuNzksODMuMzdjLS42OS0xLjE4LTIuMDktMS43OS0zLjQzLTEuOGwtNS45Mi0uMDQtMi43OCwxMy43OCwxLjg5LS4wNC45LTQuMzdoMy45NXMyLjMyLDQuNDMsMi4zMiw0LjQzbDEuOTktLjAyLTIuNDYtNC42M2MxLjYtLjQzLDIuODgtMS40NSwzLjQ5LTIuNjguNzUtMS41Mi44Ny0zLjI1LjA2LTQuNjNaTTIyMy44Nyw4Ny42OGMtLjUzLjgyLTEuNTQsMS41My0yLjY4LDEuNTVsLTQuNDMuMDYsMS4yLTYuMTRoMy41OGMuOTgtLjAyLDIuMDguMzEsMi42LDEuMjkuNTYsMS4wNi4zMiwyLjMxLS4yOCwzLjI0WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik05Ni4xMyw4Ni4wMmMtLjMyLTEuODYtMS40Ni0zLjM0LTMuMi00LjA3LTMuMjItMS4zNS03LjA3LS43Ny05LjYsMS42OC0xLjc4LDEuNzItMi41NCw0LjE5LTIuMzIsNi42Mi4yMSwyLjM5LDEuODQsNC4yNyw0LjE0LDQuOTQsMS45Ni41Nyw0LjA4LjU0LDYuMDktLjI5LDMuNTYtMS40Niw1LjUzLTUuMTksNC44OS04Ljg5Wk05Mi45MSw4OC4xOWMtLjIxLDEuNjktMS4wOSwzLjA5LTIuMzIsMy44NS0xLjQ1Ljg5LTMuMjEsMS4wMy00LjcuMjctMS4yOC0uNjYtMS43Mi0yLjA2LTEuNjQtMy40NC4xMS0xLjY5LjkzLTMuMiwyLjIxLTQuMDUsMS40OS0uOTgsMy4zOC0xLjE1LDQuOTEtLjMsMS4yOS43MSwxLjcyLDIuMTcsMS41MywzLjY4WiIvPgogIDxwYXRoIGNsYXNzPSJzdDAiIGQ9Ik0yMTIuMTYsODYuNjNjLS4xOC0yLjM4LTEuNTUtNC4zNC0zLjg5LTQuOTctMi4xOC0uNTktNC41NS0uNC02LjU0LjgtMy4wNSwxLjg0LTQuNTEsNS41MS0zLjcsOC45NS4zMywxLjQxLDEuMjIsMi41OSwyLjU3LDMuMjgsMi42OCwxLjM3LDUuODksMS4wMyw4LjI3LS42OCwyLjI5LTEuNjQsMy41MS00LjQzLDMuMjktNy4zOFpNMjA4LjU1LDkxLjk2Yy0xLjY4LDEuNzktNC4yNCwyLjI4LTYuNDMsMS40Ny0yLjg3LTEuMDctMi45My00Ljg5LTEuNTMtNy4zOCwxLjQxLTIuNTEsNC4zMS0zLjY3LDcuMDUtMi43OCwxLjM3LjQ1LDIuMzYsMS41OCwyLjU4LDMuMDIuMzEsMi4wMi0uMjEsNC4xLTEuNjgsNS42N1oiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTkxLjc5LDk1LjMybDItMTAuMjctNi4zMSw4LjI2Yy0uMTMuNDUtMS4wMy42MS0xLjIuMThsLTMuMjktOC41OC0yLjExLDEwLjM5aC0xLjgxczIuNzctMTMuNzYsMi43Ny0xMy43NmwxLjY0LS4wMywzLjcsOS43OCw3LjI5LTkuNzRjLjYxLS4wOSwxLjE0LS4wOSwxLjg0LDBsLTIuNzMsMTMuNzItMS43OS4wMloiLz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMjM3LjU2LDg5LjA1bC02LjguMDMtLjkxLDQuNThoNy45M3MtLjMzLDEuNjctLjMzLDEuNjdoLTkuODJzMi44MS0xMy44LDIuODEtMTMuOGg5LjM5YzAsLjU3LS4xMywxLjAzLS4yOSwxLjU4aC03LjVzLS44Nyw0LjMtLjg3LDQuM2w2LjY4LjA0LS4yOCwxLjZaIi8+CiAgPHBhdGggY2xhc3M9InN0MCIgZD0iTTE1OC4xNiw4NS42MWMtLjM0LTEuNjgtMS40Ni0zLjA2LTMuMDYtMy43LTMuNDUtMS4zOC03LjQ3LS4yOC05LjYxLDIuNzgtMi4yNCwzLjE4LTIuMjIsOC40NiwxLjQ4LDEwLjE0LDIuNTcsMS4xNyw1LjY4LjksOC4wNS0uODUsMi42Ni0xLjk3LDMuNzYtNS4yMywzLjEzLTguMzdaTTE1Ni4zNiw4OC41NWMtLjU5LDMuNjEtMy43Nyw1Ljc5LTcuMjQsNS4xMy0yLjE0LS40LTMuMzMtMi4xMS0zLjI2LTQuMjcuMS0zLjExLDIuMDYtNS44OCw1LjE5LTYuMzcsMS43LS4yNywzLjQ3LjE1LDQuNTQsMS41Ljg4LDEuMTIsMSwyLjU2Ljc3LDRaIi8+CiAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIxLjMxIDYzLjUzIDE1LjIzIC4wMiAzNS40OCAuMDIgNDkuMzYgMzEuNzEgNzYuNyAuMDYgOTcuNjUgLjA2IDg0LjE5IDYzLjU0IDY0Ljk4IDYzLjU0IDcyLjM1IDI4LjI2IDQ4LjQ3IDU2LjI4IDQwLjEyIDU2LjI4IDI4LjM2IDI3LjkxIDIwLjM3IDYzLjUzIDEuMzEgNjMuNTMiLz4KICA8cG9seWdvbiBjbGFzcz0ic3QwIiBwb2ludHM9IjEwNy42MyAwIDE2Ny40NiAwIDE2NC41OCAxNC45OCAxMjQuNTMgMTQuOTggMTIyLjY3IDI0LjM3IDE1Ni4wMyAyNC4zNyAxNTMuMyAzOC44OSAxMTkuODEgMzguODkgMTE3Ljk3IDQ4Ljc5IDE1OC4yNyA0OC43OSAxNTUuNjYgNjMuNTQgOTQuODcgNjMuNTQgMTA3LjYzIDAiLz4KICA8Zz4KICAgIDxwb2x5Z29uIGNsYXNzPSJzdDEiIHBvaW50cz0iMTk0Ljk1IDguNjEgMTk2LjU3IC4wNCAxNzcuMDggLjA0IDE3MS44NiAyNy44MSAxOTQuOTUgOC42MSIvPgogICAgPHBvbHlnb24gY2xhc3M9InN0MCIgcG9pbnRzPSIyNDYuMzIgLjAyIDIyMy45OCAuMDIgMTkwLjU1IDMxLjkzIDE5NC40IDExLjUyIDE3MS4zMiAzMC43MSAxNjUuMTUgNjMuNTQgMTg0Ljk3IDYzLjU0IDE4Ni4wNyA1Ny41OCAyMDIuNyA0MS45NiAyMTUuOTkgNjMuNTIgMjM4LjE5IDYzLjUyIDIxNi43MiAyOC43IDI0Ni4zMiAuMDIiLz4KICA8L2c+Cjwvc3ZnPg==" alt="MEK logo">
+  <h1>MEK Movers</h1>
+  <p class="sub">Lokale versie van het MEK Movers-dashboard en de klanttools.</p>
+  <div class="apps">
+    <a class="app" href="dashboard.html"><b>Dashboard</b><span>Leads, klanten, offertes, orders, planning, machines, service, voorraad, facturen en doelstellingen.</span></a>
+    <a class="app" href="besparingscalculator.html"><b>Besparingscalculator</b><span>De klantgerichte calculator met 3D-simulatie van de Mek-Rider.</span></a>
+    <a class="app" href="besparingsvideo.html"><b>Besparingsvideo</b><span>Maak een besparingsvideo voor een klant en download hem.</span></a>
+  </div>
+  <div class="tools">
+    <a class="btn" href="api/export">Back-up downloaden</a>
+    <label class="btn" for="imp">Back-up terugzetten</label>
+    <input id="imp" type="file" accept="application/json,.json" hidden>
+  </div>
+  <div id="stat" role="status"></div>
+</main>
+<script>
+  (async () => {
+    const stat = document.getElementById('stat');
+    try {
+      const r = await fetch('api/db', { cache: 'no-store' });
+      if (!r.ok) throw new Error();
+      const db = await r.json();
+      const n = k => Object.keys(db[k] || {}).length;
+      stat.textContent = `Server verbonden. ${n('leads')} leads, ${n('klanten')} klanten, ${n('offertes')} offertes, ${n('orders')} orders, ${n('machines')} machines.`;
+    } catch (e) {
+      stat.textContent = 'Geen server gevonden. Start de server met "npm start" en open http://localhost:3000. Zonder server bewaart de browser de gegevens alleen lokaal.';
+      document.querySelector('.tools').hidden = true;
+    }
+    document.getElementById('imp').onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      if (!confirm('Alle huidige gegevens vervangen door deze back-up? Er wordt eerst automatisch een back-up van de huidige stand gemaakt.')) { e.target.value = ''; return; }
+      try {
+        const body = await f.text();
+        const r = await fetch('api/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+        stat.textContent = r.ok ? 'Back-up teruggezet.' : 'Terugzetten mislukt: ' + await r.text();
+      } catch (x) { stat.textContent = 'Terugzetten mislukt: ' + x.message; }
+      e.target.value = '';
+    };
+  })();
+</script>
+</body>
+</html>

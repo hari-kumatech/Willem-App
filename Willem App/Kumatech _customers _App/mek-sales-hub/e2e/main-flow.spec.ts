@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { createClient } from '@supabase/supabase-js';
+import { createDbClient, serviceToken } from '../src/lib/db';
 import { existsSync } from 'node:fs';
 
 if (existsSync('.env.local')) process.loadEnvFile('.env.local');
-const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, { auth: { persistSession: false } });
+const db = createDbClient(process.env.POSTGREST_URL ?? 'http://127.0.0.1:54331', serviceToken(process.env.AUTH_JWT_SECRET!));
 
 const EMAIL = 'e2e-admin@mek.local';
 const PASSWORD = 'E2e-test-password-1';
@@ -11,11 +11,10 @@ const PROFILE = `E2E Helmond ${Date.now()}`;
 let userId = '';
 
 test.beforeAll(async () => {
-  const { data } = await db.auth.admin.listUsers();
-  const old = data.users.find((u) => u.email === EMAIL);
-  if (old) await db.auth.admin.deleteUser(old.id);
-  const created = await db.auth.admin.createUser({ email: EMAIL, password: PASSWORD, email_confirm: true, user_metadata: { name: 'E2E Admin', role: 'admin' } });
-  userId = created.data.user!.id;
+  const { data: old } = await db.from('profiles').select('id').eq('email', EMAIL).maybeSingle();
+  if (old) await db.rpc('auth_delete_user', { p_user: old.id });
+  const created = await db.rpc('auth_create_user', { p_email: EMAIL, p_password: PASSWORD, p_meta: { name: 'E2E Admin', role: 'admin' } });
+  userId = created.data as string;
   await db.from('profiles').update({ role: 'admin' }).eq('id', userId);
   // Fresh test data: sample companies (mock / demo) and earlier e2e profiles
   await db.from('companies').delete().or('place_id.like.mock-%,place_id.like.demo-%');
@@ -23,7 +22,7 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  if (userId) await db.auth.admin.deleteUser(userId);
+  if (userId) await db.rpc('auth_delete_user', { p_user: userId });
 });
 
 test('run → review → approve → lead → quote PDF', async ({ page }) => {

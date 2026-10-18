@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import ExcelJS from 'exceljs';
 import { requireAdmin, requireWriter, ForbiddenError } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { geocodePostcode, provinceFromPostcode } from '@/lib/geo';
 import { STATUS_CODES } from '@/lib/constants';
 import { extractPostcode, nameKey, safeUrl } from '@/lib/text';
@@ -14,6 +14,7 @@ import { common } from '@/i18n/messages/common';
 import { leadsMsg } from '@/i18n/messages/leads';
 import { legacyToRow, mapFamilie, mapStatus, type LeadRow } from './mapping';
 import { upsertLeads } from './persist';
+import { notifyLeadChanged, notifyLeadDeleted, notifyLeadsReload } from '../movers/sync';
 
 export type ActionResult<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -89,7 +90,7 @@ export async function saveLead(input: {
     const user = await requireWriter();
     const t = await getMessages(leadsMsg);
     const tc = await getMessages(common);
-    const supabase = await createClient();
+    const db = await createClient();
     const schema = input.id ? leadFields.partial() : leadFields;
     const parsed = schema.safeParse(input.fields);
     if (!parsed.success) return { ok: false, error: issueToMessage(parsed.error.issues[0], t) };
@@ -107,20 +108,21 @@ export async function saveLead(input: {
       patch.name_key = nameKey(fields.bedrijf ?? '', (patch.postcode as string) ?? '');
       patch.owner = user.id;
       patch.datum ??= todayIso();
-      const { data, error } = await supabase.from('leads').insert(patch).select('id, version, provincie').single();
+      const { data, error } = await db.from('leads').insert(patch).select('id, version, provincie').single();
       if (error) return { ok: false, error: error.code === '23505' ? t.errors.duplicate : tc.genericError };
-      await supabase.from('activities').insert({ lead_id: data.id, type: 'created', text: fields.bedrijf ?? '', user_id: user.id });
+      await db.from('activities').insert({ lead_id: data.id, type: 'created', text: fields.bedrijf ?? '', user_id: user.id });
+      await notifyLeadChanged(data.id);
       revalidatePath('/leads');
       revalidatePath('/overzicht');
       return { ok: true, id: data.id, version: data.version, provincie: data.provincie };
     }
 
-    const { data: current } = await supabase.from('leads').select('version, status, provincie, bedrijf, postcode').eq('id', input.id).maybeSingle();
+    const { data: current } = await db.from('leads').select('version, status, provincie, bedrijf, postcode').eq('id', input.id).maybeSingle();
     if (!current) return { ok: false, error: t.errors.notFound };
     if (fields.bedrijf !== undefined || fields.postcode !== undefined) {
       patch.name_key = nameKey(fields.bedrijf ?? current.bedrijf, (patch.postcode as string) ?? current.postcode);
     }
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('leads')
       .update(patch)
       .eq('id', input.id)
@@ -132,7 +134,7 @@ export async function saveLead(input: {
 
     const changes = Object.keys(fields).filter((k) => k !== 'status');
     if (fields.status && fields.status !== current.status) {
-      await supabase.from('activities').insert({
+      await db.from('activities').insert({
         lead_id: input.id,
         type: 'status',
         // Stored as codes ("prospect>benaderd|reason") so the log is shown in the reader's language
@@ -141,8 +143,9 @@ export async function saveLead(input: {
       });
     }
     if (changes.length) {
-      await supabase.from('activities').insert({ lead_id: input.id, type: 'edit', text: changes.join(', '), user_id: user.id });
+      await db.from('activities').insert({ lead_id: input.id, type: 'edit', text: changes.join(', '), user_id: user.id });
     }
+    await notifyLeadChanged(input.id);
     revalidatePath('/leads');
     revalidatePath(`/leads/${input.id}`);
     revalidatePath('/overzicht');
@@ -164,11 +167,12 @@ export async function changeStatus(id: string, version: number, status: string, 
 export async function deleteLead(id: string): Promise<ActionResult> {
   return guard(async () => {
     await requireWriter();
-    const supabase = await createClient();
-    const { data: lead } = await supabase.from('leads').select('company_id').eq('id', id).maybeSingle();
-    const { error } = await supabase.from('leads').delete().eq('id', id);
+    const db = await createClient();
+    const { data: lead } = await db.from('leads').select('company_id, legacy_id').eq('id', id).maybeSingle();
+    const { error } = await db.from('leads').delete().eq('id', id);
     if (error) return { ok: false, error: (await getMessages(common)).genericError };
-    if (lead?.company_id) await supabase.from('companies').update({ state: 'seen' }).eq('id', lead.company_id);
+    notifyLeadDeleted(lead?.legacy_id || id);
+    if (lead?.company_id) await db.from('companies').update({ state: 'seen' }).eq('id', lead.company_id);
     revalidatePath('/leads');
     revalidatePath('/overzicht');
     return { ok: true };
@@ -186,12 +190,13 @@ export async function addActivity(input: z.input<typeof activitySchema>): Promis
     const user = await requireWriter();
     const parsed = activitySchema.safeParse(input);
     if (!parsed.success) return { ok: false, error: (await getMessages(common)).genericError };
-    const supabase = await createClient();
-    await supabase.from('activities').insert({ lead_id: parsed.data.leadId, type: parsed.data.type, text: parsed.data.text, user_id: user.id });
+    const db = await createClient();
+    await db.from('activities').insert({ lead_id: parsed.data.leadId, type: parsed.data.type, text: parsed.data.text, user_id: user.id });
     // A call, mail or meeting counts as contact: update "datum laatste contact"
     if (parsed.data.type !== 'note') {
-      const { data } = await supabase.from('leads').select('version').eq('id', parsed.data.leadId).single();
-      if (data) await supabase.from('leads').update({ datum: todayIso() }).eq('id', parsed.data.leadId).eq('version', data.version);
+      const { data } = await db.from('leads').select('version').eq('id', parsed.data.leadId).single();
+      if (data) await db.from('leads').update({ datum: todayIso() }).eq('id', parsed.data.leadId).eq('version', data.version);
+      await notifyLeadChanged(parsed.data.leadId);
     }
     revalidatePath(`/leads/${parsed.data.leadId}`);
     return { ok: true };
@@ -286,10 +291,11 @@ export async function importLeadsFile(form: FormData): Promise<ActionResult<{ in
 
     for (const row of rows) if (row.postcode) row.provincie = (await provinceFor(row.postcode)) || row.provincie;
     if (!rows.length) return { ok: false, error: t.none };
-    const supabase = await createClient();
-    const result = await upsertLeads(supabase, rows, { mode: 'skip-existing', userId: user.id, source: file.name });
+    const db = await createClient();
+    const result = await upsertLeads(db, rows, { mode: 'skip-existing', userId: user.id, source: file.name });
     const provinces: Record<string, number> = {};
     for (const row of rows) provinces[row.provincie || '–'] = (provinces[row.provincie || '–'] ?? 0) + 1;
+    notifyLeadsReload();
     revalidatePath('/leads');
     revalidatePath('/overzicht');
     if (result.inserted === 0 && result.errors.length === 0) return { ok: false, error: t.none };
@@ -312,8 +318,9 @@ export async function restoreLeadsJson(form: FormData): Promise<ActionResult<{ i
       return { ok: false, error: t.failed('JSON') };
     }
     const rows = (Array.isArray(json) ? json : []).map(legacyToRow).filter((r): r is LeadRow => Boolean(r));
-    const supabase = await createClient();
-    const result = await upsertLeads(supabase, rows, { mode: 'overwrite', userId: user.id, source: file.name });
+    const db = await createClient();
+    const result = await upsertLeads(db, rows, { mode: 'overwrite', userId: user.id, source: file.name });
+    notifyLeadsReload();
     revalidatePath('/leads');
     return { ok: true, inserted: result.inserted, updated: result.updated, errors: result.errors.length };
   });

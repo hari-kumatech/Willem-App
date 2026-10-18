@@ -87,4 +87,8 @@ export const DEFAULT_EXCLUSIONS = [
 
 export const LEAD_ROLES = ['Warehouse manager', 'Supply chain manager', 'Crossdock manager', 'Eigenaar / directeur'] as const;
 
-export const RADIUS_OPTIONS = [5, 10, 20, 30, 50] as const;
+export const RADIUS_OPTIONS = [5, 10, 20, 30, 50, 75, 100, 150, 200] as const;
+// Any radius up to this can be typed in the profile form
+export const RADIUS_MAX_KM = 300;
+// Above this radius one Google Maps search returns too few places, so the circle is searched in ~13 km tiles
+export const RADIUS_TILES_FROM_KM = 25;

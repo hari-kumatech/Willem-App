@@ -5,7 +5,7 @@ import { RoiWizard, type LeadOption } from '@/components/roi/RoiWizard';
 import { getMessages } from '@/i18n/server';
 import { roi } from '@/i18n/messages/roi';
 import { canWrite, requireUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import type { RoiSettings } from '@/modules/roi/calc';
 import { loadSettings } from '@/modules/settings/load';
 
@@ -39,7 +39,7 @@ function toOption(row: LeadRow): LeadOption {
 }
 
 export default async function RoiPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [user, settings, t, params, supabase] = await Promise.all([requireUser(), loadSettings(), getMessages(roi), searchParams, createClient()]);
+  const [user, settings, t, params, db] = await Promise.all([requireUser(), loadSettings(), getMessages(roi), searchParams, createClient()]);
   const writer = canWrite(user);
   const leadParam = typeof params.lead === 'string' ? params.lead : null;
 
@@ -49,12 +49,12 @@ export default async function RoiPage({ searchParams }: { searchParams: Promise<
   const columns = 'id, bedrijf, contact, email, tel, hall';
 
   if (leadParam) {
-    const { data } = UUID.test(leadParam) ? await supabase.from('leads').select(columns).eq('id', leadParam).maybeSingle() : { data: null };
+    const { data } = UUID.test(leadParam) ? await db.from('leads').select(columns).eq('id', leadParam).maybeSingle() : { data: null };
     if (data) initialLead = toOption(data as LeadRow);
     else leadNotFound = true;
   }
   if (!initialLead && writer) {
-    const { data } = await supabase.from('leads').select(columns).order('bedrijf', { ascending: true }).limit(200);
+    const { data } = await db.from('leads').select(columns).order('bedrijf', { ascending: true }).limit(200);
     leads = ((data ?? []) as LeadRow[]).map(toOption);
   }
 

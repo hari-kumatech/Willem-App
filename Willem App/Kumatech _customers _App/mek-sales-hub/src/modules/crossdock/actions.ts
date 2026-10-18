@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { ForbiddenError, requireWriter } from '@/lib/auth';
 import { num } from '@/lib/format';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { getLang, getMessages } from '@/i18n/server';
 import { demo } from '@/i18n/messages/demo';
 import { HALL_FIELD, hallSchema, type Hall, type HallKey } from './hall';
@@ -38,8 +38,8 @@ export async function saveHall(leadId: string, hall: Hall): Promise<SaveHallResu
   }
   const h = parsed.data;
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.from('leads').update({ hall: h }).eq('id', id.data).select('id').maybeSingle();
+  const db = await createClient();
+  const { data, error } = await db.from('leads').update({ hall: h }).eq('id', id.data).select('id').maybeSingle();
   if (error) return { ok: false, error: t.errSave(error.message) };
   if (!data) return { ok: false, error: t.errNotFound };
 
@@ -51,7 +51,7 @@ export async function saveHall(leadId: string, hall: Hall): Promise<SaveHallResu
     num(h.loadSecondsPerPallet, 0, lang),
     num(h.palletsPerDay, 0, lang),
   );
-  const { error: actError } = await supabase.from('activities').insert({
+  const { error: actError } = await db.from('activities').insert({
     lead_id: id.data,
     type: 'note',
     text: t.activityText(summary),

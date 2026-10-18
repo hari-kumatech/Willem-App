@@ -1,5 +1,5 @@
 import 'server-only';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { DbClient } from '@/lib/db';
 import type { AppSettings } from '@/modules/settings/types';
 
 export interface BudgetStatus {
@@ -16,13 +16,13 @@ export interface BudgetStatus {
   globalClaudeCapUsd: number;
 }
 
-async function monthSpend(admin: SupabaseClient, profileId: string | null, provider: 'apify' | 'claude') {
+async function monthSpend(admin: DbClient, profileId: string | null, provider: 'apify' | 'claude') {
   const { data } = await admin.rpc('month_spend', { p_profile: profileId, p_provider: provider });
   return Number(data ?? 0);
 }
 
 // Remaining budget for a run (B.7 "Budgets"): run budget, profile month budget and global month caps
-export async function budgetForRun(admin: SupabaseClient, runId: string, settings: AppSettings): Promise<BudgetStatus | null> {
+export async function budgetForRun(admin: DbClient, runId: string, settings: AppSettings): Promise<BudgetStatus | null> {
   const { data: run } = await admin.from('search_runs').select('id, profile_id, status, budget_usd, apify_cost, budget_hit').eq('id', runId).maybeSingle();
   if (!run) return null;
   const { data: profile } = run.profile_id
@@ -60,7 +60,7 @@ export async function budgetForRun(admin: SupabaseClient, runId: string, setting
 }
 
 // Before starting a run: is there month budget left for this profile and globally?
-export async function canStartProfile(admin: SupabaseClient, profileId: string, budgetMonth: number, settings: AppSettings) {
+export async function canStartProfile(admin: DbClient, profileId: string, budgetMonth: number, settings: AppSettings) {
   const [profileMonth, apifyMonth, claudeMonth] = await Promise.all([
     monthSpend(admin, profileId, 'apify'),
     monthSpend(admin, null, 'apify'),

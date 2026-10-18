@@ -1,14 +1,14 @@
 import 'server-only';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { todayIso } from '@/lib/format';
 
 export const COMPANY_CARD_COLUMNS =
-  'id, name, kans, fit_score, criteria, score_reasons, risks, waarom, aanpak, qualified_at, qualified_mode, segment, address, postcode, city, province, phone, website, maps_url, reviews, rating, distance_km, familie, categories, source, place_id';
+  'id, name, kans, fit_score, criteria, score_reasons, risks, waarom, aanpak, texts_en, qualified_at, qualified_mode, segment, address, postcode, city, province, phone, website, maps_url, reviews, rating, distance_km, familie, categories, source, place_id';
 
 export async function queueItems(kans: string[]) {
-  const supabase = await createClient();
+  const db = await createClient();
   const today = todayIso();
-  let query = supabase
+  let query = db
     .from('review_queue')
     .select(`id, state, snooze_until, created_at, profile_id, companies!inner(${COMPANY_CARD_COLUMNS})`)
     .or(`state.eq.new,and(state.eq.snoozed,snooze_until.lte.${today})`)
@@ -21,9 +21,9 @@ export async function queueItems(kans: string[]) {
   items.sort((a, b) => (a.company.kans ?? 'Z').localeCompare(b.company.kans ?? 'Z') || (b.company.fit_score ?? 0) - (a.company.fit_score ?? 0));
   const ids = items.map((i) => i.company.id);
   const [signals, contacts] = await Promise.all([
-    ids.length ? supabase.from('company_signals').select('company_id, type, text, url').in('company_id', ids).then((r) => r.data ?? []) : Promise.resolve([]),
+    ids.length ? db.from('company_signals').select('company_id, type, text, url').in('company_id', ids).then((r) => r.data ?? []) : Promise.resolve([]),
     ids.length
-      ? supabase.from('contacts').select('id, company_id, name, role, email, phone, source_url, linkedin_search_url, is_primary').in('company_id', ids).order('rank').then((r) => r.data ?? [])
+      ? db.from('contacts').select('id, company_id, name, role, email, phone, source_url, linkedin_search_url, is_primary').in('company_id', ids).order('rank').then((r) => r.data ?? [])
       : Promise.resolve([]),
   ]);
   return items.map((item) => ({
@@ -34,9 +34,9 @@ export async function queueItems(kans: string[]) {
 }
 
 export async function listProfiles() {
-  const supabase = await createClient();
-  const { data } = await supabase.from('search_profiles').select('*').order('created_at');
-  const { data: spend } = await supabase.from('usage_log').select('profile_id, cost_usd, provider').gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+  const db = await createClient();
+  const { data } = await db.from('search_profiles').select('*').order('created_at');
+  const { data: spend } = await db.from('usage_log').select('profile_id, cost_usd, provider').gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
   return (data ?? []).map((p) => ({
     ...p,
     monthSpend: (spend ?? []).filter((s) => s.profile_id === p.id && s.provider === 'apify').reduce((sum, s) => sum + Number(s.cost_usd), 0),
@@ -44,8 +44,8 @@ export async function listProfiles() {
 }
 
 export async function listRuns(limit = 50) {
-  const supabase = await createClient();
-  const { data } = await supabase
+  const db = await createClient();
+  const { data } = await db
     .from('search_runs')
     .select('id, profile_id, profile_name, trigger, status, found, new_count, prefiltered, enriched, qualified, queued_count, apify_cost, ai_cost, error, started_at, finished_at, budget_usd')
     .order('started_at', { ascending: false })
@@ -54,8 +54,8 @@ export async function listRuns(limit = 50) {
 }
 
 export async function listCompanies(q: string, state: string, page: number) {
-  const supabase = await createClient();
-  let query = supabase
+  const db = await createClient();
+  let query = db
     .from('companies')
     .select('id, name, kans, fit_score, rule_score, segment, city, province, reviews, state, last_seen, website, phone, address, distance_km, maps_url', { count: 'exact' });
   if (state) query = query.eq('state', state);
@@ -73,11 +73,11 @@ export async function listCompanies(q: string, state: string, page: number) {
 }
 
 export async function usageThisMonth() {
-  const supabase = await createClient();
+  const db = await createClient();
   const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   const [{ data: rows }, { data: profiles }] = await Promise.all([
-    supabase.from('usage_log').select('provider, agent, cost_usd, profile_id').gte('created_at', start).limit(20000),
-    supabase.from('search_profiles').select('id, name, budget_month'),
+    db.from('usage_log').select('provider, agent, cost_usd, profile_id').gte('created_at', start).limit(20000),
+    db.from('search_profiles').select('id, name, budget_month'),
   ]);
   const byProvider = { apify: 0, claude: 0 };
   const byAgent: Record<string, number> = {};

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card, CardHeader, KansBadge, PageHeader, Pill, Stat } from '@/components/ui';
 import { requireUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { PROVINCES, STATUS_CODES } from '@/lib/constants';
 import { dateNl, euro, relativeNl, todayIso } from '@/lib/format';
 import { getLang, getMessages } from '@/i18n/server';
@@ -54,21 +54,21 @@ function add(b: Bucket, l: { status: string; kans: string | null; waarde: number
 
 export default async function OverviewPage() {
   await requireUser();
-  const supabase = await createClient();
+  const db = await createClient();
   const lang = await getLang();
   const [t, tc, tr] = await Promise.all([getMessages(overviewMsg), getMessages(common), getMessages(radarMsg)]);
 
   const [{ data: leads }, { count: queueCount }, { data: finds }, { data: runs }, { data: due }] = await Promise.all([
-    supabase.from('leads').select('status, kans, waarde, provincie, updated_at').limit(20000),
-    supabase.from('review_queue').select('id', { count: 'exact', head: true }).eq('state', 'new'),
-    supabase
+    db.from('leads').select('status, kans, waarde, provincie, updated_at').limit(20000),
+    db.from('review_queue').select('id', { count: 'exact', head: true }).eq('state', 'new'),
+    db
       .from('review_queue')
       .select('created_at, companies!inner(id, name, kans, fit_score, city, segment)')
       .eq('state', 'new')
       .order('created_at', { ascending: false })
       .limit(8),
-    supabase.from('search_runs').select('id, profile_name, status, queued_count, started_at').order('started_at', { ascending: false }).limit(5),
-    supabase
+    db.from('search_runs').select('id, profile_name, status, queued_count, started_at').order('started_at', { ascending: false }).limit(5),
+    db
       .from('leads')
       .select('id, bedrijf, volgende, due_date')
       .lte('due_date', todayIso())

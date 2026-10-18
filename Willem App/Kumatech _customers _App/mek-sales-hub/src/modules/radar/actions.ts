@@ -4,8 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { z } from 'zod';
 import { ForbiddenError, requireWriter } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/db/server';
+import { createAdminClient } from '@/lib/db/admin';
 import { todayIso } from '@/lib/format';
 import { features } from '@/lib/env';
 import { nameKey } from '@/lib/text';
@@ -14,8 +14,9 @@ import { common } from '@/i18n/messages/common';
 import { radarMsg } from '@/i18n/messages/radar';
 import { filtersSchema, nextRunAt, scheduleSchema } from './filters';
 import { requalify } from './ingest';
-import { startRun } from './startRun';
+import { startRun, type AreaScope } from './startRun';
 import { runPlanner } from './agents';
+import { notifyLeadChanged } from '@/modules/movers/sync';
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -32,10 +33,10 @@ async function fail(error: unknown): Promise<{ ok: false; error: string }> {
 export async function approveCompany(companyId: string): Promise<Result<{ leadId: string; name: string }>> {
   try {
     const user = await requireWriter();
-    const supabase = await createClient();
-    const { data: c } = await supabase.from('companies').select('*').eq('id', companyId).maybeSingle();
+    const db = await createClient();
+    const { data: c } = await db.from('companies').select('*').eq('id', companyId).maybeSingle();
     if (!c) return fail(new Error('company not found'));
-    const { data: primary } = await supabase
+    const { data: primary } = await db
       .from('contacts')
       .select('name, role, email, phone')
       .eq('company_id', companyId)
@@ -43,10 +44,10 @@ export async function approveCompany(companyId: string): Promise<Result<{ leadId
       .limit(1)
       .maybeSingle();
 
-    const { data: existing } = await supabase.from('leads').select('id').eq('company_id', companyId).maybeSingle();
+    const { data: existing } = await db.from('leads').select('id').eq('company_id', companyId).maybeSingle();
     let leadId = existing?.id as string | undefined;
     if (!leadId) {
-      const { data: lead, error } = await supabase
+      const { data: lead, error } = await db
         .from('leads')
         .insert({
           company_id: companyId,
@@ -79,22 +80,23 @@ export async function approveCompany(companyId: string): Promise<Result<{ leadId
       if (error) {
         // Same name + postcode already in the pipeline: link instead of duplicating
         if (error.code === '23505') {
-          const { data: byName } = await supabase.from('leads').select('id').eq('name_key', nameKey(c.name, c.postcode)).maybeSingle();
+          const { data: byName } = await db.from('leads').select('id').eq('name_key', nameKey(c.name, c.postcode)).maybeSingle();
           if (byName) {
-            await supabase.from('leads').update({ company_id: companyId }).eq('id', byName.id);
+            await db.from('leads').update({ company_id: companyId }).eq('id', byName.id);
             leadId = byName.id;
           }
         }
         if (!leadId) throw new Error(error.message);
       } else {
         leadId = lead.id;
-        await supabase.from('activities').insert({ lead_id: leadId, type: 'agent', text: `${c.kans ?? ''}|${c.fit_score ?? ''}`, user_id: user.id });
+        await db.from('activities').insert({ lead_id: leadId, type: 'agent', text: `${c.kans ?? ''}|${c.fit_score ?? ''}`, user_id: user.id });
       }
     }
-    await supabase.from('companies').update({ state: 'lead' }).eq('id', companyId);
-    await supabase.from('review_queue').update({ state: 'approved', decided_by: user.id, decided_at: new Date().toISOString() }).eq('company_id', companyId);
+    await db.from('companies').update({ state: 'lead' }).eq('id', companyId);
+    await db.from('review_queue').update({ state: 'approved', decided_by: user.id, decided_at: new Date().toISOString() }).eq('company_id', companyId);
     revalidatePath('/radar');
     revalidatePath('/leads');
+    await notifyLeadChanged(leadId!);
     return { ok: true, leadId: leadId!, name: c.name };
   } catch (error) {
     return fail(error);
@@ -104,9 +106,9 @@ export async function approveCompany(companyId: string): Promise<Result<{ leadId
 export async function rejectCompany(companyId: string, reason: string): Promise<Result> {
   try {
     const user = await requireWriter();
-    const supabase = await createClient();
-    await supabase.from('review_queue').update({ state: 'rejected', reason: reason.slice(0, 200), decided_by: user.id, decided_at: new Date().toISOString() }).eq('company_id', companyId);
-    await supabase.from('companies').update({ state: 'rejected' }).eq('id', companyId);
+    const db = await createClient();
+    await db.from('review_queue').update({ state: 'rejected', reason: reason.slice(0, 200), decided_by: user.id, decided_at: new Date().toISOString() }).eq('company_id', companyId);
+    await db.from('companies').update({ state: 'rejected' }).eq('id', companyId);
     revalidatePath('/radar');
     return { ok: true };
   } catch (error) {
@@ -117,9 +119,9 @@ export async function rejectCompany(companyId: string, reason: string): Promise<
 export async function snoozeCompany(companyId: string, days: number): Promise<Result> {
   try {
     const user = await requireWriter();
-    const supabase = await createClient();
+    const db = await createClient();
     const until = new Date(Date.now() + Math.max(1, Math.min(365, days)) * 86_400_000).toISOString().slice(0, 10);
-    await supabase.from('review_queue').update({ state: 'snoozed', snooze_until: until, decided_by: user.id, decided_at: new Date().toISOString() }).eq('company_id', companyId);
+    await db.from('review_queue').update({ state: 'snoozed', snooze_until: until, decided_by: user.id, decided_at: new Date().toISOString() }).eq('company_id', companyId);
     revalidatePath('/radar');
     return { ok: true };
   } catch (error) {
@@ -130,8 +132,8 @@ export async function snoozeCompany(companyId: string, days: number): Promise<Re
 export async function approveAllA(): Promise<Result<{ count: number }>> {
   try {
     await requireWriter();
-    const supabase = await createClient();
-    const { data } = await supabase.from('review_queue').select('company_id, companies!inner(kans)').eq('state', 'new').eq('companies.kans', 'A').limit(100);
+    const db = await createClient();
+    const { data } = await db.from('review_queue').select('company_id, companies!inner(kans)').eq('state', 'new').eq('companies.kans', 'A').limit(100);
     let count = 0;
     for (const row of data ?? []) {
       const result = await approveCompany(row.company_id);
@@ -184,7 +186,7 @@ export async function saveProfile(input: ProfileInput): Promise<Result<{ id: str
     const p = parsed.data;
     if (!p.filters.terms.length) return { ok: false, error: t.noTerms };
     if (p.filters.areaMode === 'provinces' && !p.filters.provinces.length) return { ok: false, error: t.noProvinces };
-    const supabase = await createClient();
+    const db = await createClient();
     const row = {
       name: p.name,
       filters: p.filters,
@@ -197,16 +199,16 @@ export async function saveProfile(input: ProfileInput): Promise<Result<{ id: str
       updated_at: new Date().toISOString(),
     };
     if (p.id) {
-      const { data: before } = await supabase.from('search_profiles').select('filters').eq('id', p.id).single();
+      const { data: before } = await db.from('search_profiles').select('filters').eq('id', p.id).single();
       // Changing the area restarts the coverage cursor
       const areaChanged =
         JSON.stringify([before?.filters?.areaMode, before?.filters?.provinces]) !== JSON.stringify([p.filters.areaMode, p.filters.provinces]);
-      const { error } = await supabase.from('search_profiles').update({ ...row, ...(areaChanged ? { coverage_cursor: 0, coverage_round: 0 } : {}) }).eq('id', p.id);
+      const { error } = await db.from('search_profiles').update({ ...row, ...(areaChanged ? { coverage_cursor: 0, coverage_round: 0 } : {}) }).eq('id', p.id);
       if (error) throw new Error(error.message);
       revalidatePath('/radar');
       return { ok: true, id: p.id };
     }
-    const { data, error } = await supabase.from('search_profiles').insert({ ...row, created_by: user.id }).select('id').single();
+    const { data, error } = await db.from('search_profiles').insert({ ...row, created_by: user.id }).select('id').single();
     if (error) throw new Error(error.message);
     revalidatePath('/radar');
     return { ok: true, id: data.id };
@@ -218,8 +220,8 @@ export async function saveProfile(input: ProfileInput): Promise<Result<{ id: str
 export async function deleteProfile(id: string): Promise<Result> {
   try {
     await requireWriter();
-    const supabase = await createClient();
-    await supabase.from('search_profiles').delete().eq('id', id);
+    const db = await createClient();
+    await db.from('search_profiles').delete().eq('id', id);
     revalidatePath('/radar');
     return { ok: true };
   } catch (error) {
@@ -227,12 +229,18 @@ export async function deleteProfile(id: string): Promise<Result> {
   }
 }
 
-export async function runProfileNow(id: string): Promise<Result<{ runId: string }>> {
+const scopeSchema = z
+  .object({ areaMode: z.enum(['provinces', 'nl']), provinces: z.array(z.string().max(40)).max(12).optional() })
+  .nullish();
+
+// scope: run this profile for another area (a province or the whole Netherlands) instead of its own
+export async function runProfileNow(id: string, scope?: AreaScope | null): Promise<Result<{ runId: string }>> {
   try {
     const user = await requireWriter();
     const h = await headers();
     const origin = `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host') ?? 'localhost:3000'}`;
-    const result = await startRun({ profileId: id, trigger: 'manual', userId: user.id, origin });
+    const parsedScope = scopeSchema.parse(scope);
+    const result = await startRun({ profileId: id, trigger: 'manual', userId: user.id, origin, scope: parsedScope ?? null });
     revalidatePath('/radar');
     return result.ok ? { ok: true, runId: result.runId } : { ok: false, error: result.error };
   } catch (error) {

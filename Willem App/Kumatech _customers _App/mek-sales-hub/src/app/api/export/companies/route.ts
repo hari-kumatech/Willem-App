@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { toCsv } from '@/lib/csv';
 import { todayIso } from '@/lib/format';
 import { compareProspects, ruleTier } from '@/modules/radar/prefilter';
@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const state = request.nextUrl.searchParams.get('state') ?? '';
   const q = (request.nextUrl.searchParams.get('q') ?? '').slice(0, 100);
-  const supabase = await createClient();
-  let query = supabase.from('companies').select('name, address, segment, distance_km, reviews, phone, website, maps_url, kans, fit_score, rule_score, province');
+  const db = await createClient();
+  let query = db.from('companies').select('name, address, segment, distance_km, reviews, phone, website, maps_url, kans, fit_score, rule_score, province');
   if (state) query = query.eq('state', state);
   if (q) query = query.or(`name.ilike.%${q.replace(/[%_,()"\\]/g, ' ')}%,city.ilike.%${q.replace(/[%_,()"\\]/g, ' ')}%`);
   const { data } = await query.limit(20000);

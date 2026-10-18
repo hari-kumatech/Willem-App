@@ -10,7 +10,8 @@ import { radarMsg } from '@/i18n/messages/radar';
 import { dateTimeNl, relativeNl, usd } from '@/lib/format';
 import { runProfileNow } from '@/modules/radar/actions';
 import { parseFilters, parseSchedule, type Schedule } from '@/modules/radar/filters';
-import { tilesFor } from '@/modules/radar/tiles';
+import { TILES, tilesFor } from '@/modules/radar/tiles';
+import { PROVINCES } from '@/lib/constants';
 
 interface ProfileRow {
   id: string;
@@ -35,6 +36,8 @@ export function ProfilesView({ profiles, canEdit }: { profiles: ProfileRow[]; ca
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: 'positive' | 'accent'; text: string } | null>(null);
+  // Area for "Search now" per profile: '' = the profile's own area, 'nl' = whole country, 'prov:<name>' = one province
+  const [scopes, setScopes] = useState<Record<string, string>>({});
 
   const scheduleText = (s: Schedule) => {
     const hh = (h: number) => `${String(h).padStart(2, '0')}:00`;
@@ -46,8 +49,10 @@ export function ProfilesView({ profiles, canEdit }: { profiles: ProfileRow[]; ca
 
   const run = (id: string) => {
     setBusy(id);
+    const choice = scopes[id] ?? '';
+    const scope = choice === 'nl' ? { areaMode: 'nl' as const } : choice.startsWith('prov:') ? { areaMode: 'provinces' as const, provinces: [choice.slice(5)] } : null;
     startTransition(async () => {
-      const result = await runProfileNow(id);
+      const result = await runProfileNow(id, scope);
       setBusy(null);
       if (!result.ok) return setMessage({ tone: 'accent', text: result.error });
       setMessage({ tone: 'positive', text: t.runStarted });
@@ -99,7 +104,28 @@ export function ProfilesView({ profiles, canEdit }: { profiles: ProfileRow[]; ca
                 <div>{t.form.minKans}: {f.minKans} · {t.form.enrich.split(' (')[0]}: {f.enrich ? '✓' : '–'}</div>
               </dl>
               {canEdit && (
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4">
+                  <label className="label" htmlFor={`scope-${p.id}`}>{t.runScope}</label>
+                  <select
+                    id={`scope-${p.id}`}
+                    className="field"
+                    value={scopes[p.id] ?? ''}
+                    onChange={(e) => setScopes({ ...scopes, [p.id]: e.target.value })}
+                    title={t.scopeHint}
+                  >
+                    <option value="">{t.scopeOwn}: {area}</option>
+                    <option value="nl">{t.form.areaModes.nl} ({t.scopeParts(TILES.length)})</option>
+                    {PROVINCES.map((prov) => (
+                      <option key={prov.slug} value={`prov:${prov.name}`}>
+                        {prov.name} ({t.scopeParts(tilesFor({ areaMode: 'provinces', provinces: [prov.name], radiusKm: 0 }).length)})
+                      </option>
+                    ))}
+                  </select>
+                  {(scopes[p.id] ?? '') !== '' && <p className="mt-1 text-xs text-soft">{t.scopeHint}</p>}
+                </div>
+              )}
+              {canEdit && (
+                <div className="mt-3 flex gap-2">
                   <Button onClick={() => run(p.id)} disabled={pending}>
                     <Play size={16} /> {busy === p.id ? t.running : t.runNow}
                   </Button>

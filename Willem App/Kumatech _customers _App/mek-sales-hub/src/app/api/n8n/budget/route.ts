@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { isAuthorizedN8nRequest } from '@/lib/n8n';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from '@/lib/db/admin';
 import { budgetForRun } from '@/modules/radar/budget';
 import { loadSettings } from '@/modules/settings/load';
 

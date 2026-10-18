@@ -1,0 +1,44 @@
+# Database for MEK Sales Hub: PostgreSQL + PostgREST. Both are free and open source.
+# Managed by scripts/db.mjs (npm run db:start / db:stop / db:reset), which reads the values from .env.local.
+# Both ports listen on 127.0.0.1 only: colleagues on the network only need the app's port 3000.
+name: mek-sales-hub
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: mek-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mek
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run npm run db:start to generate it}
+      TZ: Europe/Amsterdam
+    ports:
+      - "127.0.0.1:54332:5432"
+    volumes:
+      - mek-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mek"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  rest:
+    image: postgrest/postgrest:v12.2.12
+    container_name: mek-rest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${AUTHENTICATOR_PASSWORD:?run npm run db:start to generate it}@db:5432/mek
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${AUTH_JWT_SECRET:?run npm run db:start to generate it}
+      # Statistics (leads KPIs, Overzicht) read all rows at once; lists use their own paging
+      PGRST_DB_MAX_ROWS: "50000"
+    ports:
+      - "127.0.0.1:54331:3000"
+
+volumes:
+  mek-db-data:

@@ -1,5 +1,5 @@
 import 'server-only';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import type { DbClient } from '@/lib/db';
 import { hashInput } from '@/lib/ai/claude';
 import { env, features } from '@/lib/env';
 import { haversineKm } from '@/lib/geo';
@@ -44,7 +44,7 @@ interface CompanyRow {
 }
 
 export interface QualifyContext {
-  admin: SupabaseClient;
+  admin: DbClient;
   settings: AppSettings;
   filters: SearchFilters;
   runId: string | null;
@@ -74,7 +74,7 @@ function rankPages<T extends { url: string }>(pages: T[]): T[] {
   return [...pages].sort((a, b) => rank(a.url) - rank(b.url));
 }
 
-function buildEvidence(company: CompanyRow, settings: AppSettings): Evidence {
+export function buildEvidence(company: CompanyRow, settings: AppSettings): Evidence {
   const e = company.enrichment ?? {};
   const distanceHomeKm =
     company.lat !== null && company.lng !== null ? Math.round(haversineKm(settings.home, { lat: company.lat, lng: company.lng })) : null;
@@ -103,7 +103,7 @@ function buildEvidence(company: CompanyRow, settings: AppSettings): Evidence {
 }
 
 // Adds people named on the website (name + role + e-mail) to the evidence, for the agents and the rules
-function withPeople(ev: Evidence): Evidence {
+export function withPeople(ev: Evidence): Evidence {
   const extra = extractPeople(ev.pages, ev.emails).filter((p) => !ev.people.some((q) => q.name === p.name));
   return extra.length ? { ...ev, people: [...ev.people, ...extra] } : ev;
 }
@@ -125,10 +125,13 @@ function evidenceText(ev: Evidence): string {
     afstand_tot_mek_km: ev.distanceHomeKm,
     kvk: ev.kvk,
   };
-  let budget = 14000;
+  // A local model on a laptop CPU reads ~40 tokens/s: give it the best pages only (~2k tokens instead of ~4k)
+  const local = env.aiProvider === 'ollama';
+  let budget = local ? env.ollamaEvidenceChars : 14000;
+  const perPage = local ? 2500 : 4000;
   const pages = ev.pages
     .map((p) => {
-      const text = truncate(p.text.replace(/\s+/g, ' '), Math.max(0, Math.min(4000, budget)));
+      const text = truncate(p.text.replace(/\s+/g, ' '), Math.max(0, Math.min(perPage, budget)));
       budget -= text.length;
       return text ? `### ${p.title || p.url}\nURL: ${p.url}\n${text}` : '';
     })
@@ -179,6 +182,13 @@ function sanitiseVerdict(v: QualifierOutput): QualifierOutput {
     aanpak: truncate(v.aanpak, 600),
     risks: v.risks.slice(0, 5).map((r) => truncate(r, 200)),
     estimated_trucks: Math.max(0, Math.min(20, Math.round(Number(v.estimated_trucks) || 0))),
+    // English texts for English-language users (texts_en); a small local model may leave them out
+    en: {
+      waarom: truncate(v.en?.waarom ?? '', 600),
+      aanpak: truncate(v.en?.aanpak ?? '', 600),
+      reasons: (v.en?.reasons ?? []).slice(0, 5).map((r) => truncate(String(r), 200)),
+      risks: (v.en?.risks ?? []).slice(0, 5).map((r) => truncate(String(r), 200)),
+    },
   };
 }
 
@@ -256,7 +266,8 @@ export async function qualifyCompany(companyId: string, ctx: QualifyContext): Pr
   // 2. Contacts
   let contacts: ContactsOutput;
   const hasContactData = ev.emails.length + ev.people.length + ev.phones.length > 0;
-  const contactAi = features.ai && hasContactData ? await runContactPicker(text) : null;
+  // Local models: the rules contact picker (named people + roles from the website) is good and saves minutes per company
+  const contactAi = features.ai && env.aiProvider !== 'ollama' && hasContactData ? await runContactPicker(text) : null;
   if (contactAi) {
     contacts = contactAi.output;
     aiCost += contactAi.costUsd;
@@ -331,6 +342,7 @@ export async function qualifyCompany(companyId: string, ctx: QualifyContext): Pr
       risks: verdict.risks,
       waarom: verdict.waarom,
       aanpak: verdict.aanpak,
+      texts_en: verdict.en.waarom ? verdict.en : null,
       qualified_at: new Date().toISOString(),
       qualified_mode: mode,
       state: company.state === 'lead' ? 'lead' : queue ? 'queued' : company.state === 'queued' ? 'queued' : 'seen',

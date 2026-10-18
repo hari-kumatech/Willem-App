@@ -30,6 +30,17 @@ export interface Evidence {
 
 type CriterionKey = keyof QualifierOutput['criteria'];
 
+// English labels for the texts the rules write (texts_en)
+const SEGMENT_EN: Record<Segment, string> = {
+  'Crossdock / hub': 'Crossdock / hub',
+  Distributiecentrum: 'Distribution centre',
+  'Warehouse / opslag': 'Warehouse / storage',
+  'Logistiek dienstverlener': 'Logistics service provider',
+  Transport: 'Transport',
+  Overig: 'Other',
+};
+const SIGNAL_EN: Record<string, string> = { vacature: 'vacancy', nieuw_dc: 'new DC', uitbreiding: 'expansion', crossdock: 'crossdock', overname: 'acquisition', investering: 'investment', overig: 'other' };
+
 const lower = (text: string) => stripDiacritics(text).toLowerCase();
 
 // Searches the lowercased text, but quotes the original text (same length: only diacritics are stripped)
@@ -49,6 +60,12 @@ export function rulesQualifier(ev: Evidence): QualifierOutput {
   const snip = (pattern: RegExp) => findSnippet(all, pattern, rawAll);
   const firstPage = ev.pages[0]?.url ?? ev.website ?? 'vermelding';
   const reasons: QualifierOutput['reasons'] = [];
+  const reasonsEn: string[] = [];
+  // Every reason in Dutch (stored) and English (texts_en), same order
+  const reason = (nl: string, en: string, evidence: string, source: string) => {
+    reasons.push({ text: nl, evidence, source });
+    reasonsEn.push(en);
+  };
   const crit = {} as QualifierOutput['criteria'];
 
   const set = (key: CriterionKey, score: number, evidence: string, source: string) => {
@@ -68,19 +85,19 @@ export function rulesQualifier(ev: Evidence): QualifierOutput {
   let flow = segmentFlow[ev.segment];
   if (flowWord && flow < 0.9) flow += 0.15;
   set('palletFlows', flow, flowWord ?? `Segment ${ev.segment} (Google-categorie)`, flowWord ? firstPage : 'vermelding');
-  if (flow >= 0.7) reasons.push({ text: `${ev.segment}: verplaatst pallets tussen docks`, evidence: flowWord ?? ev.categories.join(', '), source: flowWord ? firstPage : 'vermelding' });
+  if (flow >= 0.7) reason(`${ev.segment}: verplaatst pallets tussen docks`, `${SEGMENT_EN[ev.segment]}: moves pallets between docks`, flowWord ?? ev.categories.join(', '), flowWord ? firstPage : 'vermelding');
 
   // Volume and scale
   const sizeHit = snip(/\d[\d.]*\s?(m2|m²|vierkante meter|palletplaatsen|dockdeuren|docks|vrachtwagens|trucks|medewerkers)/);
   let volume = ev.reviews >= 100 ? 0.7 : ev.reviews >= 50 ? 0.5 : ev.reviews >= 20 ? 0.35 : 0.15;
   if (sizeHit) volume = Math.min(1, volume + 0.3);
   set('volume', volume, sizeHit ?? `${ev.reviews} Google-reviews`, sizeHit ? firstPage : 'vermelding');
-  if (volume >= 0.6) reasons.push({ text: 'Schaal wijst op flink palletvolume', evidence: sizeHit ?? `${ev.reviews} reviews`, source: sizeHit ? firstPage : 'vermelding' });
+  if (volume >= 0.6) reason('Schaal wijst op flink palletvolume', 'Scale points to a large pallet volume', sizeHit ?? `${ev.reviews} reviews`, sizeHit ? firstPage : 'vermelding');
 
   // Multiple unload spots per trip
   const multi = snip(/groupage|sorteer|sortering|pakket|parcel|meerdere klanten|winkels beleveren|retail distributie|e-?commerce|fulfilment|stukgoed/);
   set('multiDrop', multi ? 0.8 : ev.segment === 'Crossdock / hub' ? 0.6 : 0, multi ?? 'onbekend', multi ? firstPage : 'vermelding');
-  if (multi) reasons.push({ text: 'Meerdere losplekken per rit waarschijnlijk (sorteren/groupage)', evidence: multi, source: firstPage });
+  if (multi) reason('Meerdere losplekken per rit waarschijnlijk (sorteren/groupage)', 'Several drop spots per trip likely (sorting / groupage)', multi, firstPage);
 
   // Growth signals from the search snippets
   const signals: QualifierOutput['signals'] = [];
@@ -95,13 +112,13 @@ export function rulesQualifier(ev: Evidence): QualifierOutput {
   if (pageVacancy && !signals.some((s) => s.type === 'vacature')) signals.push({ type: 'vacature', text: pageVacancy, url: firstPage });
   const growth = signals.length >= 2 ? 1 : signals.length === 1 ? 0.7 : 0;
   set('growth', growth, signals[0]?.text ?? 'onbekend', signals[0]?.url ?? 'vermelding');
-  if (signals[0]) reasons.push({ text: `Groeisignaal: ${signals[0].type.replace('_', ' ')}`, evidence: signals[0].text, source: signals[0].url });
+  if (signals[0]) reason(`Groeisignaal: ${signals[0].type.replace('_', ' ')}`, `Growth signal: ${SIGNAL_EN[signals[0].type] ?? signals[0].type}`, signals[0].text, signals[0].url);
 
   // Family business
   const fam = snip(/familiebedrijf|familie-?onderneming|(\d|twee|drie|vier|vijf)(e|de)? generatie|sinds 19\d\d/);
   const familie: QualifierOutput['familie'] = ev.familie === 'ja' || ev.familie === 'groot' ? (ev.familie as 'ja' | 'groot') : fam ? 'ja' : 'onbekend';
   set('family', familie === 'ja' ? 1 : familie === 'groot' ? 0.7 : 0, fam ?? (familie !== 'onbekend' ? `familie: ${familie}` : 'onbekend'), fam ? firstPage : 'vermelding');
-  if (fam) reasons.push({ text: 'Familiebedrijf: korte beslislijn', evidence: fam, source: firstPage });
+  if (fam) reason('Familiebedrijf: korte beslislijn', 'Family business: short decision line', fam, firstPage);
 
   // Data quality
   const hasContact = ev.people.length > 0 || ev.emails.length > 0;
@@ -110,18 +127,29 @@ export function rulesQualifier(ev: Evidence): QualifierOutput {
 
   const isLogistics = ev.segment !== 'Overig' || Boolean(flowWord);
   if (ev.distanceHomeKm !== null && ev.distanceHomeKm <= 60)
-    reasons.push({ text: `Dichtbij MEK (${Math.round(ev.distanceHomeKm)} km)`, evidence: `${ev.city}`, source: 'vermelding' });
+    reason(`Dichtbij MEK (${Math.round(ev.distanceHomeKm)} km)`, `Close to MEK (${Math.round(ev.distanceHomeKm)} km)`, `${ev.city}`, 'vermelding');
 
   const topReasons = reasons.slice(0, 5);
+  const topReasonsEn = reasonsEn.slice(0, 5);
+  const rating = ev.rating ? `, ${ev.rating.toFixed(1)}★` : '';
+  const place = `${ev.city || ev.address}${ev.province ? `, ${ev.province}` : ''}`;
   while (topReasons.length < 3) {
-    topReasons.push(
-      topReasons.length === 0
-        ? { text: `Segment: ${ev.segment}`, evidence: ev.categories.join(', ') || ev.name, source: 'vermelding' }
-        : topReasons.length === 1
-          ? { text: `${ev.reviews} Google-reviews${ev.rating ? `, ${ev.rating.toFixed(1)}★` : ''}`, evidence: `${ev.reviews} reviews`, source: 'vermelding' }
-          : { text: `Locatie: ${ev.city || ev.address}${ev.province ? `, ${ev.province}` : ''}`, evidence: ev.address, source: 'vermelding' },
-    );
+    if (topReasons.length === 0) {
+      topReasons.push({ text: `Segment: ${ev.segment}`, evidence: ev.categories.join(', ') || ev.name, source: 'vermelding' });
+      topReasonsEn.push(`Segment: ${SEGMENT_EN[ev.segment]}`);
+    } else if (topReasons.length === 1) {
+      topReasons.push({ text: `${ev.reviews} Google-reviews${rating}`, evidence: `${ev.reviews} reviews`, source: 'vermelding' });
+      topReasonsEn.push(`${ev.reviews} Google reviews${rating}`);
+    } else {
+      topReasons.push({ text: `Locatie: ${place}`, evidence: ev.address, source: 'vermelding' });
+      topReasonsEn.push(`Location: ${place}`);
+    }
   }
+  const risks = [
+    ...(ev.website ? [] : [['Geen website gevonden', 'No website found']]),
+    ...(ev.segment === 'Transport' ? [['Mogelijk vooral wegtransport zonder eigen dockstromen', 'Possibly mainly road transport without its own dock flows']] : []),
+  ];
+  const where = ev.city || ev.province;
 
   return {
     segment: ev.segment,
@@ -131,17 +159,25 @@ export function rulesQualifier(ev: Evidence): QualifierOutput {
     signals,
     reasons: topReasons,
     waarom: isLogistics
-      ? `${ev.segment} in ${ev.city || ev.province}${multi ? ' met sorteer-/groupagestromen' : ''}; de ${'Mek-Rider'} bespaart ritten tussen docks.`
+      ? `${ev.segment} in ${where}${multi ? ' met sorteer-/groupagestromen' : ''}; de Mek-Rider bespaart ritten tussen docks.`
       : 'Weinig aanwijzingen voor palletstromen tussen docks.',
     aanpak:
       flow >= 0.8
         ? 'Bel de warehouse- of operations manager; stuur de crossdock-one-pager en bied een demo met de crossdock-calculator op hun eigen hal.'
         : 'Eerst onderzoeken (website/LinkedIn), daarna benaderen met de one-pager.',
-    risks: [
-      ...(ev.website ? [] : ['Geen website gevonden']),
-      ...(ev.segment === 'Transport' ? ['Mogelijk vooral wegtransport zonder eigen dockstromen'] : []),
-    ],
+    risks: risks.map(([nl]) => nl),
     estimated_trucks: flow >= 0.9 && volume >= 0.7 ? 2 : flow >= 0.7 ? 1 : 0,
+    en: {
+      waarom: isLogistics
+        ? `${SEGMENT_EN[ev.segment]} in ${where}${multi ? ' with sorting / groupage flows' : ''}; the Mek-Rider saves trips between docks.`
+        : 'Little evidence of pallet flows between docks.',
+      aanpak:
+        flow >= 0.8
+          ? 'Call the warehouse or operations manager; send the crossdock one-pager and offer a demo with the crossdock calculator on their own hall.'
+          : 'Research first (website / LinkedIn), then approach them with the one-pager.',
+      reasons: topReasonsEn,
+      risks: risks.map(([, en]) => en),
+    },
   };
 }
 

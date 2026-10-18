@@ -1,33 +1,30 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { signJwt, verifyJwt } from '@/lib/jwt';
+import { SESSION_COOKIE, SESSION_DAYS, SESSION_RENEW_AFTER_SECONDS } from '@/lib/session-cookie';
 
 const PUBLIC_PATHS = ['/login', '/api/n8n', '/api/health', '/auth'];
 
-// Refreshes the Supabase session on every request and redirects based on login state.
+// Checks the session cookie on every request, renews it for active users and redirects based on login state.
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request });
-  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) return response;
+  const response = NextResponse.next({ request });
+  const secret = process.env.AUTH_JWT_SECRET?.trim();
+  if (!secret) return response;
 
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet, headers) {
-        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-        Object.entries(headers ?? {}).forEach(([k, v]) => response.headers.set(k, v));
-      },
-    },
-  });
-
-  const { data } = await supabase.auth.getClaims();
-  const loggedIn = Boolean(data?.claims);
+  const cookie = request.cookies.get(SESSION_COOKIE)?.value;
+  const claims = verifyJwt(cookie, secret);
+  const loggedIn = claims?.role === 'authenticated' && Boolean(claims.sub);
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
+  if (cookie && !loggedIn) response.cookies.delete(SESSION_COOKIE);
+  if (loggedIn && claims) {
+    const now = Math.floor(Date.now() / 1000);
+    if (now - (claims.iat ?? 0) > SESSION_RENEW_AFTER_SECONDS) {
+      const token = signJwt({ ...claims, iat: now, exp: now + SESSION_DAYS * 86400 }, secret);
+      const secure = request.headers.get('x-forwarded-proto') === 'https';
+      response.cookies.set(SESSION_COOKIE, token, { httpOnly: true, sameSite: 'lax', secure, path: '/', maxAge: SESSION_DAYS * 86400 });
+    }
+  }
 
   if (!loggedIn && !isPublic) return redirectTo(request, response, '/login');
   if (loggedIn && pathname === '/login') return redirectTo(request, response, '/overzicht');

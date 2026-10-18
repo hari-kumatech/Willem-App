@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { canWrite, requireUser } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/db/server';
 import { features } from '@/lib/env';
 import { getLead } from '@/modules/leads/queries';
 import { loadSettings } from '@/modules/settings/load';
@@ -20,25 +20,25 @@ export default async function LeadPage({ params }: PageProps<'/leads/[id]'>) {
   const { id } = await params;
   const lead = await getLead(id);
   if (!lead) notFound();
-  const supabase = await createClient();
+  const db = await createClient();
   const t = await getMessages(leadsMsg);
 
   const [company, signals, contacts, activities, quotes, drafts, settings] = await Promise.all([
     lead.company_id
-      ? supabase
+      ? db
           .from('companies')
-          .select('id, name, kans, fit_score, criteria, score_reasons, risks, waarom, aanpak, qualified_at, qualified_mode, reviews, rating, categories, segment, website, distance_km')
+          .select('id, name, kans, fit_score, criteria, score_reasons, risks, waarom, aanpak, texts_en, qualified_at, qualified_mode, reviews, rating, categories, segment, website, distance_km')
           .eq('id', lead.company_id)
           .maybeSingle()
           .then((r) => r.data)
       : Promise.resolve(null),
-    lead.company_id ? supabase.from('company_signals').select('type, text, url').eq('company_id', lead.company_id).order('found_at', { ascending: false }).limit(10).then((r) => r.data ?? []) : Promise.resolve([]),
+    lead.company_id ? db.from('company_signals').select('type, text, url').eq('company_id', lead.company_id).order('found_at', { ascending: false }).limit(10).then((r) => r.data ?? []) : Promise.resolve([]),
     lead.company_id
-      ? supabase.from('contacts').select('id, name, role, email, phone, source_url, linkedin_search_url, is_primary').eq('company_id', lead.company_id).order('rank').then((r) => r.data ?? [])
+      ? db.from('contacts').select('id, name, role, email, phone, source_url, linkedin_search_url, is_primary').eq('company_id', lead.company_id).order('rank').then((r) => r.data ?? [])
       : Promise.resolve([]),
-    supabase.from('activities').select('id, type, text, created_at, user_id, profiles(name)').eq('lead_id', id).order('created_at', { ascending: false }).limit(100).then((r) => r.data ?? []),
-    supabase.from('quotes').select('id, number, model, trucks, total_excl, created_at').eq('lead_id', id).order('created_at', { ascending: false }).then((r) => r.data ?? []),
-    supabase.from('outreach_drafts').select('id, to_email, subject, body, status, mode, created_at').eq('lead_id', id).order('created_at', { ascending: false }).limit(5).then((r) => r.data ?? []),
+    db.from('activities').select('id, type, text, created_at, user_id, profiles(name)').eq('lead_id', id).order('created_at', { ascending: false }).limit(100).then((r) => r.data ?? []),
+    db.from('quotes').select('id, number, model, trucks, total_excl, created_at').eq('lead_id', id).order('created_at', { ascending: false }).then((r) => r.data ?? []),
+    db.from('outreach_drafts').select('id, to_email, subject, body, status, mode, created_at').eq('lead_id', id).order('created_at', { ascending: false }).limit(5).then((r) => r.data ?? []),
     loadSettings(),
   ]);
 

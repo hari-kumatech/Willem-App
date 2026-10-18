@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireWriter, ForbiddenError } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/db/server';
+import { createAdminClient } from '@/lib/db/admin';
 import { env, features } from '@/lib/env';
 import { callN8nWebhook } from '@/lib/n8n';
 import { hashInput } from '@/lib/ai/claude';
@@ -31,14 +31,14 @@ export async function draftOutreach(leadId: string): Promise<Result<{ id: string
     const user = await requireWriter();
     const lang = await getLang();
     const t = await getMessages(outreachMsg);
-    const supabase = await createClient();
-    const { data: lead } = await supabase.from('leads').select('*').eq('id', leadId).maybeSingle();
+    const db = await createClient();
+    const { data: lead } = await db.from('leads').select('*').eq('id', leadId).maybeSingle();
     if (!lead) return { ok: false, error: (await getMessages(common)).genericError };
     const { data: company } = lead.company_id
-      ? await supabase.from('companies').select('segment, score_reasons, waarom, aanpak').eq('id', lead.company_id).maybeSingle()
+      ? await db.from('companies').select('segment, score_reasons, waarom, aanpak').eq('id', lead.company_id).maybeSingle()
       : { data: null };
     const { data: contact } = lead.company_id
-      ? await supabase.from('contacts').select('name, role, email').eq('company_id', lead.company_id).eq('is_primary', true).maybeSingle()
+      ? await db.from('contacts').select('name, role, email').eq('company_id', lead.company_id).eq('is_primary', true).maybeSingle()
       : { data: null };
 
     const to = lead.email || contact?.email || '';
@@ -92,7 +92,7 @@ export async function draftOutreach(leadId: string): Promise<Result<{ id: string
       body = [tpl.greeting(name), '', tpl.intro(lead.bedrijf, segment), tpl.benefit(pct(teaser.efficiency * 100, 0, lang)), '', tpl.cta, '', tpl.sign, '', tpl.optout].join('\n');
     }
 
-    const { data: draft, error } = await supabase
+    const { data: draft, error } = await db
       .from('outreach_drafts')
       .insert({ lead_id: leadId, to_email: to, subject, body, mode, created_by: user.id })
       .select('id')
@@ -124,23 +124,23 @@ export async function saveOutreach(input: z.input<typeof sendSchema>): Promise<R
     if (!parsed.success) return { ok: false, error: t.noEmail };
     const { id, to, subject, body, send } = parsed.data;
     if (await onDoNotContact(to)) return { ok: false, error: t.doNotContact };
-    const supabase = await createClient();
-    const { data: draft } = await supabase.from('outreach_drafts').select('lead_id, status').eq('id', id).maybeSingle();
+    const db = await createClient();
+    const { data: draft } = await db.from('outreach_drafts').select('lead_id, status').eq('id', id).maybeSingle();
     if (!draft) return { ok: false, error: (await getMessages(common)).genericError };
-    await supabase.from('outreach_drafts').update({ to_email: to, subject, body }).eq('id', id);
+    await db.from('outreach_drafts').update({ to_email: to, subject, body }).eq('id', id);
     if (!send) return { ok: true, status: draft.status };
     if (!features.canSendEmail) return { ok: false, error: t.sendingOff };
 
-    await supabase.from('outreach_drafts').update({ status: 'approved', approved_by: user.id }).eq('id', id);
+    await db.from('outreach_drafts').update({ status: 'approved', approved_by: user.id }).eq('id', id);
     try {
       await callN8nWebhook(env.n8nSendEmailWebhookUrl!, { draftId: id, to, subject, body, replyTo: user.email, attachments: ['one-pager-crossdocking.pdf'] });
-      await supabase.from('outreach_drafts').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', id);
-      await supabase.from('activities').insert({ lead_id: draft.lead_id, type: 'mail', text: `${subject} → ${to}`, user_id: user.id });
+      await db.from('outreach_drafts').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', id);
+      await db.from('activities').insert({ lead_id: draft.lead_id, type: 'mail', text: `${subject} → ${to}`, user_id: user.id });
       revalidatePath(`/leads/${draft.lead_id}`);
       return { ok: true, status: 'sent' };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await supabase.from('outreach_drafts').update({ status: 'failed', error: message.slice(0, 300) }).eq('id', id);
+      await db.from('outreach_drafts').update({ status: 'failed', error: message.slice(0, 300) }).eq('id', id);
       return { ok: false, error: t.failed(message.slice(0, 200)) };
     }
   } catch (error) {

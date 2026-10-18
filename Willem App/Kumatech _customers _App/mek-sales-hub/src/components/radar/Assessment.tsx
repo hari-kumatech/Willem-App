@@ -17,9 +17,32 @@ export interface CompanyAssessmentData {
   risks: string[];
   waarom: string;
   aanpak: string;
+  // English versions of waarom / aanpak / reasons / risks (shown when the UI is English)
+  texts_en?: AssessmentTextsEn | null;
   qualified_at: string | null;
   qualified_mode: string | null;
   distance_home_km?: number | null;
+}
+
+export interface AssessmentTextsEn {
+  waarom?: string;
+  aanpak?: string;
+  reasons?: string[];
+  risks?: string[];
+}
+
+// The assessment texts in the UI language: English when the UI is English and an English version exists
+export function localisedTexts(
+  company: Pick<CompanyAssessmentData, 'waarom' | 'aanpak' | 'score_reasons' | 'risks' | 'texts_en'>,
+  lang: string,
+) {
+  const en = lang === 'en' ? company.texts_en ?? null : null;
+  return {
+    waarom: en?.waarom || company.waarom,
+    aanpak: en?.aanpak || company.aanpak,
+    reasons: (company.score_reasons ?? []).map((r, i) => ({ ...r, text: en?.reasons?.[i] || r.text })),
+    risks: en?.risks?.length ? en.risks : company.risks ?? [],
+  };
 }
 
 export interface SignalData {
@@ -59,6 +82,7 @@ export function Assessment({ company, signals, compact = false }: { company: Com
   const t = useMessages(radarMsg);
   const lang = useLang();
   if (!company.qualified_at) return <p className="text-sm text-soft">{t.notQualified}</p>;
+  const texts = localisedTexts(company, lang);
   const scoreColor = company.kans === 'A' ? 'var(--positive)' : company.kans === 'B' ? 'var(--warning)' : 'var(--soft)';
   return (
     <div className="space-y-4">
@@ -98,11 +122,11 @@ export function Assessment({ company, signals, compact = false }: { company: Com
         </div>
       )}
 
-      {company.score_reasons?.length > 0 && (
+      {texts.reasons.length > 0 && (
         <div>
           <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-soft">{t.reasons}</h3>
           <ul className="space-y-1.5 text-sm">
-            {company.score_reasons.map((r, i) => (
+            {texts.reasons.map((r, i) => (
               <li key={i} className="flex gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
                 <span>
@@ -132,28 +156,28 @@ export function Assessment({ company, signals, compact = false }: { company: Com
         </div>
       )}
 
-      {(company.waarom || company.aanpak) && (
+      {(texts.waarom || texts.aanpak) && (
         <div className="grid gap-3 sm:grid-cols-2">
-          {company.waarom && (
+          {texts.waarom && (
             <div>
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-soft">{t.waarom}</h3>
-              <p className="text-sm">{company.waarom}</p>
+              <p className="text-sm">{texts.waarom}</p>
             </div>
           )}
-          {company.aanpak && (
+          {texts.aanpak && (
             <div className="internal-only">
               <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-soft">{t.aanpak}</h3>
-              <p className="text-sm">{company.aanpak}</p>
+              <p className="text-sm">{texts.aanpak}</p>
             </div>
           )}
         </div>
       )}
 
-      {!compact && company.risks?.length > 0 && (
+      {!compact && texts.risks.length > 0 && (
         <div className="internal-only">
           <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-soft">{t.risks}</h3>
           <ul className="list-inside list-disc text-sm text-soft">
-            {company.risks.map((r, i) => (
+            {texts.risks.map((r, i) => (
               <li key={i}>{r}</li>
             ))}
           </ul>
